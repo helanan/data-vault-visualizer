@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Data Vault — Field Reference</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Inter:wght@400;500;600;700;800&display=swap');
+
+  :root{
+    --bg: #0b0e14;
+    --panel: #12161f;
+    --panel-edge: #1e2430;
+    --hub: #ffb454;
+    --link: #7ee3c9;
+    --sat: #ff6b7a;
+    --hash: #6fa8ff;
+    --text: #e8ecf4;
+    --dim: #7c8598;
+    --grid: #1a2030;
+  }
+
+  *{box-sizing:border-box; margin:0; padding:0;}
+
+  body{
+    background:
+      linear-gradient(var(--grid) 1px, transparent 1px) 0 0/100% 44px,
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px) 0 0/44px 100%,
+      var(--bg);
+    color: var(--text);
+    font-family:'Inter', sans-serif;
+    padding: 28px 16px 60px;
+    line-height:1.5;
+  }
+
+  .wrap{ max-width: 720px; margin: 0 auto; }
+
+  .eyebrow{
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px;
+    letter-spacing:2px;
+    color: var(--dim);
+    text-transform:uppercase;
+    margin-bottom:8px;
+  }
+
+  h1{
+    font-size: 30px;
+    font-weight: 800;
+    letter-spacing:-0.02em;
+    margin-bottom:6px;
+  }
+  h1 span{ color:var(--dim); font-weight:500; }
+
+  .sub{
+    color:var(--dim);
+    font-size:14px;
+    margin-bottom: 30px;
+    max-width: 54ch;
+  }
+
+  /* ---- flow strip ---- */
+  .flow{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    overflow-x:auto;
+    padding: 4px 4px 14px;
+    margin-bottom: 6px;
+  }
+  .flow-node{
+    font-family:'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight:700;
+    padding: 8px 12px;
+    border-radius: 8px;
+    white-space:nowrap;
+    border:1px solid var(--panel-edge);
+  }
+  .flow-arrow{ color: var(--dim); font-size:14px; flex-shrink:0; }
+  .fn-hub{ background: rgba(255,180,84,0.12); color: var(--hub); border-color: rgba(255,180,84,0.35);}
+  .fn-link{ background: rgba(126,227,201,0.12); color: var(--link); border-color: rgba(126,227,201,0.35);}
+  .fn-sat{ background: rgba(255,107,122,0.12); color: var(--sat); border-color: rgba(255,107,122,0.35);}
+  .fn-hash{ background: rgba(111,168,255,0.12); color: var(--hash); border-color: rgba(111,168,255,0.35);}
+
+  /* ---- cards ---- */
+  .card{
+    background: var(--panel);
+    border: 1px solid var(--panel-edge);
+    border-radius: 14px;
+    padding: 20px 20px 18px;
+    margin-bottom: 16px;
+    position:relative;
+    overflow:hidden;
+  }
+  .card::before{
+    content:'';
+    position:absolute;
+    left:0; top:0; bottom:0;
+    width:4px;
+  }
+  .card.hub::before{ background: var(--hub); }
+  .card.link::before{ background: var(--link); }
+  .card.sat::before{ background: var(--sat); }
+  .card.hash::before{ background: var(--hash); }
+
+  .card-head{
+    display:flex;
+    align-items:baseline;
+    gap:10px;
+    margin-bottom: 10px;
+    flex-wrap:wrap;
+  }
+  .card-tag{
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px;
+    font-weight:700;
+    letter-spacing:1px;
+    padding: 3px 8px;
+    border-radius: 5px;
+  }
+  .hub .card-tag{ background: rgba(255,180,84,0.15); color:var(--hub); }
+  .link .card-tag{ background: rgba(126,227,201,0.15); color:var(--link); }
+  .sat .card-tag{ background: rgba(255,107,122,0.15); color:var(--sat); }
+  .hash .card-tag{ background: rgba(111,168,255,0.15); color:var(--hash); }
+
+  .card-title{ font-size:19px; font-weight:800; }
+
+  .mnemonic{
+    font-family:'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--dim);
+    margin-bottom: 12px;
+    padding-bottom:12px;
+    border-bottom: 1px dashed var(--panel-edge);
+  }
+  .mnemonic b{ color: var(--text); }
+
+  .row{ display:flex; gap:12px; margin-bottom:10px; align-items:flex-start;}
+  .row:last-child{ margin-bottom:0; }
+  .row-label{
+    font-family:'JetBrains Mono', monospace;
+    font-size:10px;
+    letter-spacing:1px;
+    text-transform:uppercase;
+    color: var(--dim);
+    width: 76px;
+    flex-shrink:0;
+    padding-top:2px;
+  }
+  .row-body{ font-size: 14.5px; color: var(--text); }
+  .row-body em{ color: var(--dim); font-style:normal; }
+
+  /* ---- incident callout ---- */
+  .incident{
+    background: rgba(255,107,122,0.06);
+    border: 1px solid rgba(255,107,122,0.25);
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-top: 4px;
+  }
+  .incident-label{
+    font-family:'JetBrains Mono', monospace;
+    font-size:10px;
+    letter-spacing:1.5px;
+    color: var(--sat);
+    margin-bottom: 6px;
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  .incident-label::before{ content:'▸'; }
+  .incident-body{ font-size: 13.5px; color: var(--text); }
+
+  /* ---- summary block ---- */
+  .summary{
+    background: linear-gradient(135deg, #141a26, #10141c);
+    border: 1px solid var(--panel-edge);
+    border-radius: 14px;
+    padding: 22px 20px;
+    margin-top: 24px;
+  }
+  .summary-title{
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px;
+    letter-spacing:2px;
+    color: var(--dim);
+    text-transform:uppercase;
+    margin-bottom: 14px;
+  }
+  .formula{ display:flex; flex-direction:column; gap:10px; }
+  .f-line{ display:flex; align-items:center; gap:10px; font-size:15px; }
+  .f-key{
+    font-family:'JetBrains Mono', monospace;
+    font-weight:800;
+    width: 90px;
+    flex-shrink:0;
+  }
+  .f-key.hub{color:var(--hub);} .f-key.link{color:var(--link);}
+  .f-key.sat{color:var(--sat);} .f-key.hash{color:var(--hash);}
+  .f-arrow{ color:var(--dim); }
+  .f-val{ color: var(--text); font-weight:600; }
+  .f-val em{ color:var(--dim); font-style:normal; font-weight:400; }
+
+  .anchor-line{
+    margin-top:18px;
+    padding-top:16px;
+    border-top:1px solid var(--panel-edge);
+    font-size: 13.5px;
+    color: var(--dim);
+  }
+  .anchor-line b{ color: var(--text); }
+
+  @media (max-width:480px){
+    h1{ font-size:24px; }
+    .row{ flex-direction:column; gap:2px; }
+    .row-label{ width:auto; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="eyebrow">Field reference — before the interview</div>
+  <h1>Data Vault, <span>as it actually happened to you</span></h1>
+  <p class="sub">Four pieces. One real incident. Read this once, then explain it out loud without looking.</p>
+
+  <div class="flow">
+    <div class="flow-node fn-hub">HUB</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node fn-link">LINK</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node fn-sat">SATELLITE</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node fn-hash">HASHDIFF</div>
+  </div>
+
+  <!-- HUB -->
+  <div class="card hub">
+    <div class="card-head">
+      <span class="card-tag">01 · HUB</span>
+      <span class="card-title">Who</span>
+    </div>
+    <div class="mnemonic">Memory hook: <b>Hub = ID card.</b> One row per real-world thing.</div>
+    <div class="row">
+      <div class="row-label">Holds</div>
+      <div class="row-body">The unique business key (e.g. a claim ID) + a hashkey that identifies it everywhere else in the model.</div>
+    </div>
+    <div class="row">
+      <div class="row-label">Rule</div>
+      <div class="row-body">A business key appears in the Hub <em>exactly once</em>, no matter how many times it shows up in source data.</div>
+    </div>
+  </div>
+
+  <!-- LINK -->
+  <div class="card link">
+    <div class="card-head">
+      <span class="card-tag">02 · LINK</span>
+      <span class="card-title">How things relate</span>
+    </div>
+    <div class="mnemonic">Memory hook: <b>Link = a bridge.</b> Connects two or more Hubs.</div>
+    <div class="row">
+      <div class="row-label">Holds</div>
+      <div class="row-body">The relationship between business keys — e.g. a claim linked to a provider, or a claim linked to a remittance.</div>
+    </div>
+    <div class="row">
+      <div class="row-label">Rule</div>
+      <div class="row-body">No descriptive data lives here — just which keys are connected.</div>
+    </div>
+  </div>
+
+  <!-- SATELLITE -->
+  <div class="card sat">
+    <div class="card-head">
+      <span class="card-tag">03 · SATELLITE</span>
+      <span class="card-title">What changed, when</span>
+    </div>
+    <div class="mnemonic">Memory hook: <b>Satellite = the diary.</b> Tracks history of a Hub or Link over time.</div>
+    <div class="row">
+      <div class="row-label">Holds</div>
+      <div class="row-body">Descriptive/attribute columns (FILE_DATE, status, amounts) + a load date, so you can see how a record looked at any point in time.</div>
+    </div>
+    <div class="incident">
+      <div class="incident-label">Your incident</div>
+      <div class="incident-body">The Ascension gap traced back to NULL <b>FILE_DATE</b> values in exactly this kind of satellite — <b>SAT_REMITTED_CLAIM_ATTR</b> and <b>SAT_REMITTED_SERVICE_ATTR</b>. Root cause was upstream (a stuck watermark), but the symptom showed up here first.</div>
+    </div>
+  </div>
+
+  <!-- HASHDIFF -->
+  <div class="card hash">
+    <div class="card-head">
+      <span class="card-tag">04 · HASHDIFF</span>
+      <span class="card-title">The shortcut</span>
+    </div>
+    <div class="mnemonic">Memory hook: <b>Hashdiff = one zipper</b> instead of twenty individual buttons.</div>
+    <div class="row">
+      <div class="row-label">What it is</div>
+      <div class="row-body">A hash of <em>all</em> a satellite's descriptive columns, mashed together into one value.</div>
+    </div>
+    <div class="row">
+      <div class="row-label">Why</div>
+      <div class="row-body">New row comes in → compare its hashdiff to the last one on file. <b>Same hash = nothing changed, skip it. Different hash = insert a new dated row.</b> One comparison instead of checking 20 columns by hand.</div>
+    </div>
+    <div class="row">
+      <div class="row-label">Not this</div>
+      <div class="row-body"><em>Hashdiff is not what makes a business key unique — that's the Hub's job.</em> Hashdiff only detects change inside a Satellite.</div>
+    </div>
+  </div>
+
+  <!-- SUMMARY -->
+  <div class="summary">
+    <div class="summary-title">Say this out loud before you walk in</div>
+    <div class="formula">
+      <div class="f-line"><span class="f-key hub">HUB</span><span class="f-arrow">=</span><span class="f-val">Who <em>— the unique key</em></span></div>
+      <div class="f-line"><span class="f-key link">LINK</span><span class="f-arrow">=</span><span class="f-val">How they relate <em>— the bridge</em></span></div>
+      <div class="f-line"><span class="f-key sat">SAT</span><span class="f-arrow">=</span><span class="f-val">What changed, when <em>— the diary</em></span></div>
+      <div class="f-line"><span class="f-key hash">HASH</span><span class="f-arrow">=</span><span class="f-val">The shortcut <em>— one zipper, not 20 buttons</em></span></div>
+    </div>
+    <div class="anchor-line">
+      Anchor phrase: <b>"A hashdiff tells my satellite whether anything changed, without me checking every column by hand — it's not about uniqueness, that's the Hub's job."</b>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

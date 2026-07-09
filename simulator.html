@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Data Vault — Interactive Simulator</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Inter:wght@400;500;600;700;800&display=swap');
+
+  :root{
+    --bg:#0b0e14; --panel:#12161f; --panel2:#161c28; --edge:#1e2430;
+    --hub:#ffb454; --link:#7ee3c9; --sat:#ff6b7a; --hash:#6fa8ff;
+    --text:#e8ecf4; --dim:#7c8598; --grid:#1a2030; --good:#7ee3c9; --bad:#ff6b7a;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    background:
+      linear-gradient(var(--grid) 1px, transparent 1px) 0 0/100% 44px,
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px) 0 0/44px 100%,
+      var(--bg);
+    color:var(--text); font-family:'Inter',sans-serif; padding:24px 14px 70px; line-height:1.5;
+  }
+  .wrap{ max-width:760px; margin:0 auto; }
+  .eyebrow{ font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:2px; color:var(--dim); text-transform:uppercase; margin-bottom:8px;}
+  h1{ font-size:26px; font-weight:800; letter-spacing:-0.02em; margin-bottom:6px;}
+  h1 span{ color:var(--dim); font-weight:500;}
+  .sub{ color:var(--dim); font-size:13.5px; margin-bottom:22px; max-width:56ch;}
+
+  .panel{ background:var(--panel); border:1px solid var(--edge); border-radius:14px; padding:18px; margin-bottom:16px;}
+  .panel-title{ font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:var(--dim); margin-bottom:12px; display:flex; align-items:center; gap:8px;}
+  .dot{ width:8px; height:8px; border-radius:50%; flex-shrink:0;}
+  .dot.hub{background:var(--hub);} .dot.link{background:var(--link);} .dot.sat{background:var(--sat);} .dot.hash{background:var(--hash);}
+
+  table{ width:100%; border-collapse:collapse; font-size:12.5px;}
+  th{ text-align:left; font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:1px; text-transform:uppercase; color:var(--dim); padding:6px 8px; border-bottom:1px solid var(--edge);}
+  td{ padding:7px 8px; border-bottom:1px solid var(--edge); font-family:'JetBrains Mono',monospace; }
+  tr:last-child td{ border-bottom:none; }
+  .mono{ font-family:'JetBrains Mono',monospace; }
+  .k{ color:var(--hub); font-weight:700; }
+  .badge{ display:inline-block; padding:2px 7px; border-radius:5px; font-size:10px; font-weight:700; letter-spacing:0.5px;}
+  .badge.current{ background:rgba(126,227,201,0.15); color:var(--good);}
+  .badge.old{ background:rgba(124,133,152,0.15); color:var(--dim);}
+  .hashval{ color:var(--hash); }
+
+  /* controls */
+  .field-row{ display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px;}
+  .field{ flex:1; min-width:130px; }
+  .field label{ display:block; font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:1px; text-transform:uppercase; color:var(--dim); margin-bottom:5px;}
+  .field select, .field input{
+    width:100%; background:var(--panel2); border:1px solid var(--edge); color:var(--text);
+    padding:9px 10px; border-radius:8px; font-family:'Inter',sans-serif; font-size:14px;
+  }
+  .field input:focus, .field select:focus{ outline:1px solid var(--hash); }
+
+  .btnrow{ display:flex; gap:10px; flex-wrap:wrap; margin-top:4px;}
+  button{
+    font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:700; letter-spacing:0.5px;
+    padding:10px 16px; border-radius:8px; border:1px solid var(--edge); cursor:pointer;
+    background:var(--panel2); color:var(--text); transition:transform 0.1s ease;
+  }
+  button:active{ transform:scale(0.97); }
+  button.primary{ background:var(--hash); color:#0b0e14; border-color:var(--hash);}
+  button.danger{ background:transparent; color:var(--sat); border-color:rgba(255,107,122,0.4);}
+  button.ghost{ background:transparent; }
+
+  .result{
+    margin-top:14px; padding:12px 14px; border-radius:10px; font-size:13.5px;
+    border:1px solid var(--edge); display:none;
+  }
+  .result.show{ display:block; }
+  .result.inserted{ background:rgba(126,227,201,0.08); border-color:rgba(126,227,201,0.35); }
+  .result.skipped{ background:rgba(124,133,152,0.08); border-color:rgba(124,133,152,0.35); }
+  .result.broken{ background:rgba(255,107,122,0.08); border-color:rgba(255,107,122,0.35); }
+  .result-label{ font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:1.5px; text-transform:uppercase; margin-bottom:6px;}
+  .result.inserted .result-label{ color:var(--good); }
+  .result.skipped .result-label{ color:var(--dim); }
+  .result.broken .result-label{ color:var(--sat); }
+
+  .hashcompute{
+    font-family:'JetBrains Mono',monospace; font-size:11.5px; color:var(--dim); margin-top:8px;
+    background:var(--bg); border-radius:6px; padding:8px 10px; overflow-x:auto; white-space:nowrap;
+  }
+  .hashcompute b{ color:var(--text); }
+
+  .flash{ animation: flash 1.1s ease; }
+  @keyframes flash{
+    0%{ background: rgba(126,227,201,0.28); }
+    100%{ background: transparent; }
+  }
+  .flash-bad{ animation: flashbad 1.1s ease; }
+  @keyframes flashbad{
+    0%{ background: rgba(255,107,122,0.28); }
+    100%{ background: transparent; }
+  }
+
+  .note{ font-size:12.5px; color:var(--dim); margin-top:10px; line-height:1.6;}
+  .note b{ color:var(--text); }
+
+  .scenario-btn{ font-size:11.5px; padding:8px 12px; }
+
+  @media (max-width:480px){
+    h1{ font-size:21px; }
+    table{ font-size:11px; }
+    th,td{ padding:5px 6px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="eyebrow">Interactive · learn by doing</div>
+  <h1>Data Vault <span>simulator</span></h1>
+  <p class="sub">Pick a claim, change a field, hit Run Load — watch the hashdiff decide whether Snowflake inserts a new satellite row or skips it. Then replay your actual incident.</p>
+
+  <!-- HUB -->
+  <div class="panel">
+    <div class="panel-title"><span class="dot hub"></span>HUB_CLAIM — one row per claim, forever</div>
+    <table>
+      <tr><th>Claim Key</th><th>Hashkey</th><th>Load Date</th></tr>
+      <tbody id="hubTable"></tbody>
+    </table>
+  </div>
+
+  <!-- LINK -->
+  <div class="panel">
+    <div class="panel-title"><span class="dot link"></span>LINK_CLAIM_PROVIDER — which keys connect</div>
+    <table>
+      <tr><th>Link Hashkey</th><th>Claim</th><th>Provider</th></tr>
+      <tbody id="linkTable"></tbody>
+    </table>
+  </div>
+
+  <!-- SATELLITE -->
+  <div class="panel">
+    <div class="panel-title"><span class="dot sat"></span>SAT_REMITTED_CLAIM_ATTR — full history, one row per change</div>
+    <table>
+      <tr><th>Load Date</th><th>File Date</th><th>Status</th><th>Amount</th><th>Hashdiff</th><th></th></tr>
+      <tbody id="satTable"></tbody>
+    </table>
+  </div>
+
+  <!-- SIMULATOR -->
+  <div class="panel">
+    <div class="panel-title"><span class="dot hash"></span>Simulate an incoming file load</div>
+
+    <div class="field-row">
+      <div class="field">
+        <label>Claim key</label>
+        <select id="claimSelect"></select>
+      </div>
+      <div class="field">
+        <label>File date</label>
+        <input type="text" id="inFileDate" value="2026-07-09">
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Status</label>
+        <select id="inStatus">
+          <option>PAID</option>
+          <option>DENIED</option>
+          <option>PENDING</option>
+          <option>REJECTED</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Amount</label>
+        <input type="text" id="inAmount" value="1240.00">
+      </div>
+    </div>
+
+    <div class="btnrow">
+      <button class="primary" onclick="runLoad(false)">▸ Run Load</button>
+      <button class="ghost" onclick="prefillNoChange()">Prefill: no real change</button>
+      <button class="danger scenario-btn" onclick="replayIncident()">⚠ Replay the Ascension bug</button>
+    </div>
+
+    <div class="result" id="resultBox">
+      <div class="result-label" id="resultLabel"></div>
+      <div id="resultBody"></div>
+      <div class="hashcompute" id="hashCompute"></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">What just happened</div>
+    <div class="note" id="explainer">
+      Change any field and click <b>Run Load</b>. If the hashdiff of your new row matches the current satellite row's hashdiff, Snowflake <b>skips the insert</b> — nothing actually changed. If it differs, a <b>new dated row gets inserted</b> and becomes the current version. Try the "Replay the Ascension bug" button to see exactly what broke in your incident: a blank File Date passed straight into the satellite.
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ---- simple deterministic hash for visualization purposes ----
+function hashdiff(str){
+  let h = 5381;
+  for(let i=0;i<str.length;i++){ h = ((h*33) ^ str.charCodeAt(i)) >>> 0; }
+  return h.toString(16).padStart(8,'0');
+}
+
+const claims = {
+  'CLM-8841': { hashkey:'a1f9c2', provider:'Ascension St. Vincent' },
+  'CLM-8842': { hashkey:'b3e7d5', provider:'Ascension St. Vincent' },
+  'CLM-8850': { hashkey:'c9a4f1', provider:'Ascension Sacred Heart' },
+};
+
+// satellite history, keyed by claim, most recent last
+let satHistory = {
+  'CLM-8841': [
+    { load:'2026-05-01', file:'2026-05-01', status:'PENDING', amount:'1240.00' },
+    { load:'2026-05-14', file:'2026-05-14', status:'PAID', amount:'1240.00' },
+  ],
+  'CLM-8842': [
+    { load:'2026-05-02', file:'2026-05-02', status:'PENDING', amount:'860.00' },
+  ],
+  'CLM-8850': [
+    { load:'2026-05-03', file:'2026-05-03', status:'DENIED', amount:'2110.50' },
+  ],
+};
+
+function rowHash(r){ return hashdiff(r.file+'|'+r.status+'|'+r.amount); }
+
+function renderHub(){
+  const body = document.getElementById('hubTable');
+  body.innerHTML = Object.entries(claims).map(([k,v])=>
+    `<tr><td class="k">${k}</td><td class="hashval">${v.hashkey}</td><td>2026-01-01</td></tr>`
+  ).join('');
+}
+
+function renderLink(){
+  const body = document.getElementById('linkTable');
+  body.innerHTML = Object.entries(claims).map(([k,v])=>
+    `<tr><td class="hashval">${hashdiff(k+v.provider).slice(0,6)}</td><td class="k">${k}</td><td>${v.provider}</td></tr>`
+  ).join('');
+}
+
+function renderSat(highlightClaim, highlightIdx, bad){
+  const body = document.getElementById('satTable');
+  let rows = [];
+  Object.entries(satHistory).forEach(([claim, hist])=>{
+    hist.forEach((r, idx)=>{
+      const isCurrent = idx === hist.length-1;
+      const isHighlight = (claim===highlightClaim && idx===highlightIdx);
+      const fileDisplay = r.file === '' ? '<span style="color:var(--sat)">NULL</span>' : r.file;
+      rows.push(`<tr class="${isHighlight ? (bad?'flash-bad':'flash') : ''}">
+        <td>${r.load}</td>
+        <td>${fileDisplay}</td>
+        <td>${r.status}</td>
+        <td>${r.amount}</td>
+        <td class="hashval">${rowHash(r)}</td>
+        <td>${isCurrent ? '<span class="badge current">CURRENT</span>' : '<span class="badge old">history</span>'}</td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--edge);"><td colspan="6" style="padding:0 8px 6px; font-size:10.5px; color:var(--dim);">${claim}</td></tr>`);
+    });
+  });
+  body.innerHTML = rows.join('');
+}
+
+function populateSelect(){
+  const sel = document.getElementById('claimSelect');
+  sel.innerHTML = Object.keys(claims).map(k=>`<option value="${k}">${k}</option>`).join('');
+}
+
+function prefillNoChange(){
+  const claim = document.getElementById('claimSelect').value;
+  const hist = satHistory[claim];
+  const last = hist[hist.length-1];
+  document.getElementById('inFileDate').value = last.file;
+  document.getElementById('inStatus').value = last.status;
+  document.getElementById('inAmount').value = last.amount;
+}
+
+function runLoad(isIncident){
+  const claim = document.getElementById('claimSelect').value;
+  const file = document.getElementById('inFileDate').value;
+  const status = document.getElementById('inStatus').value;
+  const amount = document.getElementById('inAmount').value;
+
+  const newRow = { load:'2026-07-09', file, status, amount };
+  const hist = satHistory[claim];
+  const last = hist[hist.length-1];
+
+  const oldHash = rowHash(last);
+  const newHash = rowHash(newRow);
+
+  const box = document.getElementById('resultBox');
+  const label = document.getElementById('resultLabel');
+  const bodyEl = document.getElementById('resultBody');
+  const compute = document.getElementById('hashCompute');
+
+  compute.innerHTML = `hash(<b>${last.file}|${last.status}|${last.amount}</b>) = <span class="hashval">${oldHash}</span>  →  hash(<b>${file}|${status}|${amount}</b>) = <span class="hashval">${newHash}</span>`;
+
+  if(isIncident && file === ''){
+    hist.push(newRow);
+    box.className = 'result show broken';
+    label.textContent = '✗ This is your incident';
+    bodyEl.innerHTML = `File Date came in <b>NULL</b> from the source. The hashdiff still computed and still differed, so a new row was inserted anyway — but with a blank File Date. Downstream reporting filters/joins on File Date, so this claim <b>silently disappeared from the Ascension denials report</b> even though the row physically existed in the satellite. That's the exact shape of the bug you traced back to the stuck watermark.`;
+    document.getElementById('explainer').innerHTML = `<b>This is the real failure mode:</b> hashdiff logic worked correctly — it detected a change and inserted a row. The bug wasn't in the Data Vault pattern itself, it was upstream: a stale external table fed a NULL into a field the reporting layer depended on. The lesson for the interview: <b>Data Vault patterns don't fail quietly — the data feeding them can.</b>`;
+    renderSat(claim, hist.length-1, true);
+    box.classList.add('show');
+    return;
+  }
+
+  if(oldHash === newHash){
+    box.className = 'result show skipped';
+    label.textContent = '— No insert (skipped)';
+    bodyEl.innerHTML = `Hashdiffs match. Nothing actually changed, so the load correctly does <b>not</b> insert a new satellite row — even though a "new" record technically arrived.`;
+    renderSat(claim, hist.length-1, false);
+  } else {
+    hist.push(newRow);
+    box.className = 'result show inserted';
+    label.textContent = '✓ New row inserted';
+    bodyEl.innerHTML = `Hashdiffs differ, so a new dated satellite row is inserted and becomes <b>CURRENT</b>. The old row stays exactly as it was — full history preserved.`;
+    renderSat(claim, hist.length-1, false);
+  }
+  box.classList.add('show');
+}
+
+function replayIncident(){
+  const sel = document.getElementById('claimSelect');
+  sel.value = 'CLM-8842';
+  document.getElementById('inFileDate').value = '';
+  document.getElementById('inStatus').value = 'PAID';
+  document.getElementById('inAmount').value = '860.00';
+  runLoad(true);
+}
+
+renderHub();
+renderLink();
+populateSelect();
+renderSat();
+</script>
+</body>
+</html>
