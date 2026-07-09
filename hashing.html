@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Hashing — Concept Lab</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Inter:wght@400;500;600;700;800&display=swap');
+
+  :root{
+    --bg:#0b0e14; --panel:#12161f; --panel2:#161c28; --edge:#1e2430;
+    --hub:#ffb454; --link:#7ee3c9; --sat:#ff6b7a; --hash:#6fa8ff;
+    --text:#e8ecf4; --dim:#7c8598; --grid:#1a2030; --good:#7ee3c9; --bad:#ff6b7a;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    background:
+      linear-gradient(var(--grid) 1px, transparent 1px) 0 0/100% 44px,
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px) 0 0/44px 100%,
+      var(--bg);
+    color:var(--text); font-family:'Inter',sans-serif; padding:24px 14px 70px; line-height:1.5;
+  }
+  .wrap{ max-width:760px; margin:0 auto; }
+
+  .nav{ display:flex; gap:8px; margin-bottom:20px; flex-wrap:wrap; }
+  .nav a{
+    font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:0.5px;
+    color:var(--dim); text-decoration:none; padding:6px 10px; border:1px solid var(--edge); border-radius:7px;
+  }
+  .nav a.active{ color:var(--hash); border-color:rgba(111,168,255,0.4); background:rgba(111,168,255,0.08); }
+
+  .eyebrow{ font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:2px; color:var(--dim); text-transform:uppercase; margin-bottom:8px;}
+  h1{ font-size:26px; font-weight:800; letter-spacing:-0.02em; margin-bottom:6px;}
+  h1 span{ color:var(--dim); font-weight:500;}
+  .sub{ color:var(--dim); font-size:13.5px; margin-bottom:22px; max-width:58ch;}
+
+  .panel{ background:var(--panel); border:1px solid var(--edge); border-radius:14px; padding:18px; margin-bottom:16px;}
+  .panel-title{ font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:var(--dim); margin-bottom:14px; display:flex; align-items:center; gap:8px;}
+  .dot{ width:8px; height:8px; border-radius:50%; flex-shrink:0; background:var(--hash); }
+
+  .field label{ display:block; font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:1px; text-transform:uppercase; color:var(--dim); margin-bottom:6px;}
+  .field input{
+    width:100%; background:var(--panel2); border:1px solid var(--edge); color:var(--text);
+    padding:11px 12px; border-radius:8px; font-family:'JetBrains Mono',monospace; font-size:15px;
+  }
+  .field input:focus{ outline:1px solid var(--hash); }
+  .field{ margin-bottom:14px; }
+
+  .hashout{
+    display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+    background:var(--bg); border:1px solid var(--edge); border-radius:10px; padding:14px 16px; margin-top:4px;
+  }
+  .hashout .arrow{ color:var(--dim); font-size:18px; }
+  .hashout .bits{ display:flex; gap:3px; flex-wrap:wrap; }
+  .bit{
+    font-family:'JetBrains Mono',monospace; font-size:20px; font-weight:800;
+    width:28px; height:36px; display:flex; align-items:center; justify-content:center;
+    border-radius:5px; background:rgba(111,168,255,0.12); color:var(--hash);
+    transition: background 0.25s ease, color 0.25s ease, transform 0.25s ease;
+  }
+  .bit.changed{ background: var(--sat); color:#0b0e14; transform: translateY(-2px); }
+
+  .compare-grid{ display:grid; grid-template-columns:1fr; gap:14px; }
+  @media(min-width:560px){ .compare-grid{ grid-template-columns:1fr 1fr; } }
+
+  .stat-row{ display:flex; justify-content:space-between; align-items:center; margin-top:12px; padding-top:12px; border-top:1px dashed var(--edge); font-size:13px; }
+  .stat-row b{ color:var(--text); }
+  .diffcount{ font-family:'JetBrains Mono',monospace; font-weight:800; font-size:15px; }
+  .diffcount.low{ color:var(--dim); }
+  .diffcount.high{ color:var(--hash); }
+
+  .note{ font-size:13px; color:var(--dim); margin-top:10px; line-height:1.65; }
+  .note b{ color:var(--text); }
+
+  .presetrow{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; }
+  .preset{
+    font-family:'JetBrains Mono',monospace; font-size:11px; padding:7px 11px; border-radius:7px;
+    background:var(--panel2); border:1px solid var(--edge); color:var(--dim); cursor:pointer;
+  }
+  .preset:hover{ color:var(--text); border-color:var(--hash); }
+
+  .props{ display:flex; flex-direction:column; gap:10px; }
+  .prop{ display:flex; gap:10px; align-items:flex-start; }
+  .prop-num{ font-family:'JetBrains Mono',monospace; color:var(--hash); font-weight:800; font-size:13px; width:20px; flex-shrink:0; }
+  .prop-body{ font-size:13.5px; }
+  .prop-body b{ color:var(--text); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="nav">
+    <a href="index.html">Reference card</a>
+    <a href="simulator.html">Data Vault simulator</a>
+    <a href="hashing.html" class="active">Hashing lab</a>
+  </div>
+
+  <div class="eyebrow">Interactive · one level deeper</div>
+  <h1>What a hash <span>actually does</span></h1>
+  <p class="sub">Before hashdiff makes sense, hashing itself has to click. Type below and watch what a hash function does to your input — then flip one character and see what happens.</p>
+
+  <!-- LIVE HASH -->
+  <div class="panel">
+    <div class="panel-title"><span class="dot"></span>Type anything</div>
+    <div class="field">
+      <label>Input</label>
+      <input type="text" id="liveInput" value="DENIED" oninput="renderLive()">
+    </div>
+    <div class="hashout">
+      <span style="font-family:'JetBrains Mono',monospace; color:var(--dim); font-size:12px;">hash →</span>
+      <div class="bits" id="liveBits"></div>
+    </div>
+    <div class="note">Same input, typed twice, always produces the <b>exact same output</b> — that's what makes it useful for comparison instead of storage.</div>
+  </div>
+
+  <!-- AVALANCHE COMPARISON -->
+  <div class="panel">
+    <div class="panel-title"><span class="dot"></span>The avalanche effect</div>
+    <div class="presetrow">
+      <span class="preset" onclick="setPair('DENIED','DENIED')">Identical</span>
+      <span class="preset" onclick="setPair('DENIED','DENIEE')">One letter</span>
+      <span class="preset" onclick="setPair('PAID|1240.00','DENIED|1240.00')">Status changed</span>
+      <span class="preset" onclick="setPair('PAID|1240.00','PAID|1240.01')">One cent</span>
+    </div>
+    <div class="compare-grid">
+      <div class="field" style="margin-bottom:0;">
+        <label>String A</label>
+        <input type="text" id="cmpA" value="DENIED" oninput="renderCompare()">
+      </div>
+      <div class="field" style="margin-bottom:0;">
+        <label>String B</label>
+        <input type="text" id="cmpB" value="DENIEE" oninput="renderCompare()">
+      </div>
+    </div>
+
+    <div class="hashout" style="margin-top:14px;">
+      <span style="font-family:'JetBrains Mono',monospace; color:var(--dim); font-size:12px; width:56px;">hash A →</span>
+      <div class="bits" id="bitsA"></div>
+    </div>
+    <div class="hashout" style="margin-top:8px;">
+      <span style="font-family:'JetBrains Mono',monospace; color:var(--dim); font-size:12px; width:56px;">hash B →</span>
+      <div class="bits" id="bitsB"></div>
+    </div>
+
+    <div class="stat-row">
+      <span>Characters different in input: <b id="charDiff">—</b></span>
+      <span>Hash digits different: <span class="diffcount" id="hashDiff">—</span></span>
+    </div>
+    <div class="note" id="avalancheNote"></div>
+  </div>
+
+  <!-- WHY IT MATTERS -->
+  <div class="panel">
+    <div class="panel-title"><span class="dot"></span>Why hashdiff relies on this</div>
+    <div class="props">
+      <div class="prop"><div class="prop-num">01</div><div class="prop-body"><b>Deterministic.</b> Same input always gives the same hash — so comparing two loads of the same unchanged record always agrees.</div></div>
+      <div class="prop"><div class="prop-num">02</div><div class="prop-body"><b>Sensitive to tiny changes.</b> Flip one character anywhere in the row and the hash looks completely different — nothing is "almost the same."</div></div>
+      <div class="prop"><div class="prop-num">03</div><div class="prop-body"><b>Fixed size, no matter the input.</b> A satellite row with 3 columns or 30 columns still compresses down to one hash of the same length — cheap to store and compare.</div></div>
+      <div class="prop"><div class="prop-num">04</div><div class="prop-body"><b>One comparison instead of many.</b> This is the whole payoff: instead of checking FILE_DATE, STATUS, and AMOUNT separately, you check <em>one</em> value and trust it reflects all of them.</div></div>
+    </div>
+    <div class="note" style="margin-top:14px; padding-top:14px; border-top:1px dashed var(--edge);">
+      Anchor phrase: <b>"A hash takes anything, of any length, and turns it into a fixed-size fingerprint — and even a one-character change produces a totally different fingerprint. That's what makes it safe to trust a single hashdiff comparison instead of checking every column."</b>
+    </div>
+  </div>
+
+</div>
+
+<script>
+function hashdiff(str){
+  let h = 5381;
+  for(let i=0;i<str.length;i++){ h = ((h*33) ^ str.charCodeAt(i)) >>> 0; }
+  return h.toString(16).padStart(8,'0');
+}
+
+function makeBits(container, hexStr, prevHexStr){
+  container.innerHTML = '';
+  for(let i=0;i<hexStr.length;i++){
+    const span = document.createElement('span');
+    span.className = 'bit';
+    span.textContent = hexStr[i];
+    if(prevHexStr && prevHexStr[i] !== hexStr[i]){
+      span.classList.add('changed');
+    }
+    container.appendChild(span);
+  }
+}
+
+let lastLiveHash = null;
+function renderLive(){
+  const val = document.getElementById('liveInput').value;
+  const h = hashdiff(val);
+  makeBits(document.getElementById('liveBits'), h, lastLiveHash);
+  lastLiveHash = h;
+}
+
+function renderCompare(){
+  const a = document.getElementById('cmpA').value;
+  const b = document.getElementById('cmpB').value;
+  const ha = hashdiff(a);
+  const hb = hashdiff(b);
+
+  makeBits(document.getElementById('bitsA'), ha, null);
+  makeBits(document.getElementById('bitsB'), hb, ha);
+
+  let charDiff = 0;
+  const maxLen = Math.max(a.length, b.length);
+  for(let i=0;i<maxLen;i++){ if(a[i] !== b[i]) charDiff++; }
+
+  let hashDiffCount = 0;
+  for(let i=0;i<ha.length;i++){ if(ha[i] !== hb[i]) hashDiffCount++; }
+
+  document.getElementById('charDiff').textContent = charDiff;
+  const dEl = document.getElementById('hashDiff');
+  dEl.textContent = hashDiffCount + ' / ' + ha.length;
+  dEl.className = 'diffcount ' + (hashDiffCount === 0 ? 'low' : 'high');
+
+  const note = document.getElementById('avalancheNote');
+  if(a === b){
+    note.innerHTML = `Identical strings → identical hash. This is the "no real change, skip the insert" case.`;
+  } else if(charDiff <= 2 && hashDiffCount >= ha.length - 2){
+    note.innerHTML = `Only <b>${charDiff}</b> character${charDiff===1?'':'s'} changed in the input, but <b>${hashDiffCount} of ${ha.length}</b> digits changed in the hash. A tiny, easy-to-miss change becomes impossible to miss in the hash — that's exactly why it's safe to trust.`;
+  } else {
+    note.innerHTML = `${charDiff} character(s) differ, producing a hash that differs in ${hashDiffCount} of ${ha.length} digits.`;
+  }
+}
+
+renderLive();
+renderCompare();
+
+function setPair(a,b){
+  document.getElementById('cmpA').value = a;
+  document.getElementById('cmpB').value = b;
+  renderCompare();
+}
+</script>
+</body>
+</html>
