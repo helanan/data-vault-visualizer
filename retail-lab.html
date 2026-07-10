@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Retail Data Vault — Modeling Lab</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Inter:wght@400;500;600;700;800&display=swap');
+
+  :root{
+    --bg:#0b0e14; --panel:#12161f; --panel2:#161c28; --edge:#1e2430;
+    --hub:#ffb454; --link:#7ee3c9; --sat:#ff6b7a; --hash:#6fa8ff;
+    --text:#e8ecf4; --dim:#7c8598; --grid:#1a2030; --good:#7ee3c9; --bad:#ff6b7a;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    background:
+      linear-gradient(var(--grid) 1px, transparent 1px) 0 0/100% 44px,
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px) 0 0/44px 100%,
+      var(--bg);
+    color:var(--text); font-family:'Inter',sans-serif; padding:24px 14px 80px; line-height:1.5;
+  }
+  .wrap{ max-width:820px; margin:0 auto; }
+
+  .nav{ display:flex; gap:8px; margin-bottom:20px; flex-wrap:wrap; }
+  .nav a{ font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:0.5px; color:var(--dim); text-decoration:none; padding:6px 10px; border:1px solid var(--edge); border-radius:7px; }
+  .nav a.active{ color:var(--hash); border-color:rgba(111,168,255,0.4); background:rgba(111,168,255,0.08); }
+
+  .eyebrow{ font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:2px; color:var(--dim); text-transform:uppercase; margin-bottom:8px;}
+  h1{ font-size:25px; font-weight:800; letter-spacing:-0.02em; margin-bottom:6px;}
+  h1 span{ color:var(--dim); font-weight:500;}
+  .sub{ color:var(--dim); font-size:13.5px; margin-bottom:20px; max-width:60ch;}
+
+  .panel{ background:var(--panel); border:1px solid var(--edge); border-radius:14px; padding:18px; margin-bottom:16px;}
+  .panel-title{ font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:var(--dim); margin-bottom:14px; }
+
+  /* raw data preview */
+  .tblwrap{ overflow-x:auto; }
+  table{ border-collapse:collapse; font-size:11.5px; width:100%; min-width:640px; }
+  th{ text-align:left; font-family:'JetBrains Mono',monospace; font-size:9.5px; letter-spacing:0.5px; text-transform:uppercase; color:var(--dim); padding:6px 8px; border-bottom:1px solid var(--edge); white-space:nowrap; }
+  td{ padding:6px 8px; border-bottom:1px solid var(--edge); font-family:'JetBrains Mono',monospace; white-space:nowrap; }
+
+  /* zones */
+  .zones{ display:grid; grid-template-columns:1fr; gap:12px; margin-bottom:16px; }
+  @media(min-width:640px){ .zones{ grid-template-columns:1fr 1fr 1fr; } }
+  .zone{
+    border:1.5px dashed var(--edge); border-radius:12px; padding:12px; min-height:120px;
+    background:var(--panel2); transition: border-color 0.15s ease, background 0.15s ease;
+  }
+  .zone.dragover{ border-color:var(--hash); background:rgba(111,168,255,0.06); }
+  .zone-head{ display:flex; align-items:center; gap:7px; margin-bottom:10px; }
+  .zone-dot{ width:9px; height:9px; border-radius:50%; flex-shrink:0; }
+  .zone-dot.hub{ background:var(--hub); } .zone-dot.hubsat{ background:var(--sat); } .zone-dot.linksat{ background:var(--link); }
+  .zone-title{ font-family:'JetBrains Mono',monospace; font-size:11.5px; font-weight:700; }
+  .zone-sub{ font-size:10.5px; color:var(--dim); margin-bottom:8px; }
+  .zone-chips{ display:flex; flex-wrap:wrap; gap:6px; min-height:24px; }
+
+  .pool{ display:flex; flex-wrap:wrap; gap:7px; margin-bottom:6px; }
+
+  .chip{
+    font-family:'JetBrains Mono',monospace; font-size:12px; padding:7px 11px; border-radius:8px;
+    background:var(--panel2); border:1.5px solid var(--edge); color:var(--text); cursor:pointer;
+    user-select:none; transition: transform 0.1s ease, border-color 0.15s ease;
+  }
+  .chip:active{ transform:scale(0.96); }
+  .chip.selected{ border-color:var(--hash); background:rgba(111,168,255,0.12); }
+  .chip.correct{ border-color:var(--good); background:rgba(126,227,201,0.1); }
+  .chip.incorrect{ border-color:var(--bad); background:rgba(255,107,122,0.1); }
+
+  .hint{ font-size:10.5px; color:var(--dim); margin-top:2px; display:block; }
+
+  .btnrow{ display:flex; gap:10px; flex-wrap:wrap; margin-top:4px; }
+  button{
+    font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:700; letter-spacing:0.5px;
+    padding:10px 16px; border-radius:8px; border:1px solid var(--edge); cursor:pointer;
+    background:var(--panel2); color:var(--text);
+  }
+  button:active{ transform:scale(0.97); }
+  button.primary{ background:var(--hash); color:#0b0e14; border-color:var(--hash); }
+  button.ghost{ background:transparent; }
+
+  .scorebar{
+    display:none; margin-top:14px; padding:12px 14px; border-radius:10px;
+    border:1px solid var(--edge); background:rgba(111,168,255,0.06); font-size:13.5px;
+  }
+  .scorebar.show{ display:block; }
+  .scorebar b{ color:var(--hash); }
+
+  /* diagram */
+  .diagram{ display:none; margin-top:6px; }
+  .diagram.show{ display:block; }
+  .dhub-row{ display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin-bottom:8px; }
+  .dbox{ border-radius:9px; padding:9px 13px; font-family:'JetBrains Mono',monospace; font-size:11.5px; text-align:center; min-width:90px; }
+  .dbox.hub{ background:rgba(255,180,84,0.12); border:1.5px solid var(--hub); color:var(--hub); font-weight:700; }
+  .dbox.link{ background:rgba(126,227,201,0.12); border:1.5px solid var(--link); color:var(--link); font-weight:700; margin:10px auto; max-width:260px; text-align:center; }
+  .dbox.sat{ background:rgba(255,107,122,0.1); border:1px solid rgba(255,107,122,0.4); color:var(--text); font-size:10.5px; margin-top:6px; }
+  .dcol{ display:flex; flex-direction:column; align-items:center; }
+  .dline{ width:1.5px; height:14px; background:var(--edge); }
+
+  /* comparison */
+  .comptable{ width:100%; border-collapse:collapse; font-size:12.5px; }
+  .comptable th{ text-transform:none; font-size:11px; padding:10px 10px; }
+  .comptable td{ padding:10px 10px; font-family:'Inter',sans-serif; font-size:12.5px; vertical-align:top; white-space:normal; }
+  .comptable th.dv{ color:var(--hash); }
+  .comptable th.star{ color:var(--sat); }
+  .comptable th.nf{ color:var(--dim); }
+
+  .note{ font-size:13px; color:var(--dim); line-height:1.65; margin-top:10px; }
+  .note b{ color:var(--text); }
+
+  .incident-tie{
+    background: rgba(126,227,201,0.06); border:1px solid rgba(126,227,201,0.25); border-radius:10px;
+    padding:13px 15px; margin-top:14px; font-size:13px; line-height:1.6;
+  }
+  .incident-tie b{ color:var(--good); }
+
+  @media(max-width:480px){ h1{ font-size:20px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="nav">
+    <a href="index.html">Reference card</a>
+    <a href="simulator.html">Data Vault simulator</a>
+    <a href="hashing.html">Hashing lab</a>
+    <a href="retail-lab.html" class="active">Retail modeling lab</a>
+  </div>
+
+  <div class="eyebrow">Interactive · retail dataset</div>
+  <h1>Model it <span>yourself</span></h1>
+  <p class="sub">Below is a flat retail extract — the kind of ugly denormalized file a source system actually hands you. Tap a column, then tap where it belongs. Tap a placed column to send it back.</p>
+
+  <!-- RAW DATA -->
+  <div class="panel">
+    <div class="panel-title">RAW_RETAIL_SALES — one flat file, no structure</div>
+    <div class="tblwrap">
+      <table>
+        <tr>
+          <th>transaction_id</th><th>customer_id</th><th>customer_name</th><th>customer_email</th>
+          <th>loyalty_tier</th><th>product_id</th><th>product_name</th><th>category</th>
+          <th>store_id</th><th>store_location</th><th>order_date</th><th>payment_method</th>
+          <th>quantity</th><th>unit_price</th>
+        </tr>
+        <tr>
+          <td>TXN-55012</td><td>CUST-2291</td><td>D. Alvarez</td><td>d.alvarez@mail.com</td>
+          <td>Gold</td><td>SKU-8841</td><td>Cold Brew 32oz</td><td>Beverages</td>
+          <td>STR-014</td><td>West Chester, PA</td><td>2026-06-14</td><td>Credit</td>
+          <td>2</td><td>4.29</td>
+        </tr>
+        <tr>
+          <td>TXN-55013</td><td>CUST-1187</td><td>M. Chen</td><td>m.chen@mail.com</td>
+          <td>Silver</td><td>SKU-2210</td><td>Hoagie - Italian</td><td>Deli</td>
+          <td>STR-014</td><td>West Chester, PA</td><td>2026-06-14</td><td>Debit</td>
+          <td>1</td><td>8.99</td>
+        </tr>
+        <tr>
+          <td>TXN-55014</td><td>CUST-2291</td><td>D. Alvarez</td><td>d.alvarez@mail.com</td>
+          <td>Gold</td><td>SKU-1150</td><td>Fuel - Regular</td><td>Fuel</td>
+          <td>STR-022</td><td>Media, PA</td><td>2026-06-15</td><td>Credit</td>
+          <td>11</td><td>3.19</td>
+        </tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- COLUMN POOL -->
+  <div class="panel">
+    <div class="panel-title">Unplaced columns — tap one, then tap a zone below</div>
+    <div class="pool" id="pool"></div>
+  </div>
+
+  <!-- ZONES -->
+  <div class="zones">
+    <div class="zone" id="zone-hub" onclick="placeSelected('hub')">
+      <div class="zone-head"><span class="zone-dot hub"></span><span class="zone-title">HUB</span></div>
+      <div class="zone-sub">Business keys — one row per real-world thing, never changes</div>
+      <div class="zone-chips" id="chips-hub"></div>
+    </div>
+    <div class="zone" id="zone-hubsat" onclick="placeSelected('hubsat')">
+      <div class="zone-head"><span class="zone-dot hubsat"></span><span class="zone-title">HUB SATELLITE</span></div>
+      <div class="zone-sub">Descriptive attributes of ONE entity — can change over time</div>
+      <div class="zone-chips" id="chips-hubsat"></div>
+    </div>
+    <div class="zone" id="zone-linksat" onclick="placeSelected('linksat')">
+      <div class="zone-head"><span class="zone-dot linksat"></span><span class="zone-title">LINK SATELLITE</span></div>
+      <div class="zone-sub">Facts that only exist because of the COMBINATION (this sale, this product, this quantity)</div>
+      <div class="zone-chips" id="chips-linksat"></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="btnrow">
+      <button class="primary" onclick="checkAnswers()">▸ Check my model</button>
+      <button class="ghost" onclick="revealDiagram()">Reveal the diagram</button>
+      <button class="ghost" onclick="resetAll()">Reset</button>
+    </div>
+    <div class="scorebar" id="scorebar"></div>
+  </div>
+
+  <!-- DIAGRAM -->
+  <div class="panel diagram" id="diagramPanel">
+    <div class="panel-title">The resulting model</div>
+    <div id="diagramBody"></div>
+    <div class="note">Notice: <b>no raw column was ever "the Link."</b> The Link isn't sourced from the file — it's built by combining Hub keys that showed up together on the same row. That's a common trip-up: Links model relationships, not attributes.</div>
+  </div>
+
+  <!-- COMPARISON -->
+  <div class="panel">
+    <div class="panel-title">Why Data Vault over 3NF or Star Schema</div>
+    <div class="tblwrap">
+      <table class="comptable">
+        <tr>
+          <th class="nf">3NF (OLTP)</th>
+          <th class="star">Star Schema (Kimball)</th>
+          <th class="dv">Data Vault</th>
+        </tr>
+        <tr>
+          <td>History usually overwritten on update — you lose what a record looked like yesterday unless you build custom audit tables.</td>
+          <td>Handles history via Type 2 dimensions, but retrofitting a new "track this too" attribute means reworking the dimension.</td>
+          <td>History is the default. Every satellite row is dated. Nothing is ever overwritten — you always get built-in history.</td>
+        </tr>
+        <tr>
+          <td>Tightly coupled — a schema change in one table can ripple into every query joining it.</td>
+          <td>Fact/dimension grain is fixed early; a new source or new grain often means redesigning the star.</td>
+          <td>Hubs/Links/Satellites load independently and in parallel. A new source just adds a new satellite — existing structures don't change.</td>
+        </tr>
+        <tr>
+          <td>Not built for auditability — hard to prove what the data looked like at a point in time for compliance.</td>
+          <td>Better than 3NF, but conformed dimensions across many facts get complex to fully audit.</td>
+          <td>Fully auditable by design — this is exactly why RCM/healthcare and other regulated industries lean on it.</td>
+        </tr>
+        <tr>
+          <td>Fast to query for a single transaction, painful for broad reporting.</td>
+          <td>Built for reporting speed — this is Kimball's core strength.</td>
+          <td>Slower to query raw — usually a Business Vault or reporting layer sits on top for performance.</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="incident-tie">
+      <b>Why this isn't theoretical for you:</b> when the Ascension watermark bug hit, the damage was contained to two satellites (SAT_REMITTED_CLAIM_ATTR, SAT_REMITTED_SERVICE_ATTR). The Hubs and Links — the actual keys and relationships — were untouched. That's what made a targeted 19.4M-row backfill possible instead of a full reload. In a Star Schema, a bug like that usually means rebuilding the fact table itself, because the broken data and the keys live in the same row.
+    </div>
+  </div>
+
+</div>
+
+<script>
+const columns = [
+  { id:'transaction_id', zone:'hub', hub:'Transaction', why:'Uniquely identifies a sale event. Every reference to this transaction anywhere in the source system points back to this one value — that\'s a Hub key.' },
+  { id:'customer_id', zone:'hub', hub:'Customer', why:'Uniquely identifies a customer, independent of any single transaction — a Hub key.' },
+  { id:'product_id', zone:'hub', hub:'Product', why:'Uniquely identifies a SKU/product — a Hub key.' },
+  { id:'store_id', zone:'hub', hub:'Store', why:'Uniquely identifies a store location — a Hub key.' },
+
+  { id:'customer_name', zone:'hubsat', hub:'Customer', why:'Describes the Customer entity and can change (name correction, marriage) — belongs on a Customer satellite.' },
+  { id:'customer_email', zone:'hubsat', hub:'Customer', why:'Descriptive of Customer, can change — Customer satellite.' },
+  { id:'loyalty_tier', zone:'hubsat', hub:'Customer', why:'Classic satellite case — tier changes over time (Silver → Gold) and you want that history preserved.' },
+  { id:'product_name', zone:'hubsat', hub:'Product', why:'Descriptive of Product, can be renamed/rebranded — Product satellite.' },
+  { id:'category', zone:'hubsat', hub:'Product', why:'Descriptive of Product, can be reclassified — Product satellite.' },
+  { id:'store_location', zone:'hubsat', hub:'Store', why:'Descriptive of Store — stores relocate or rebrand, so this needs history too.' },
+  { id:'order_date', zone:'hubsat', hub:'Transaction', why:'Descriptive of the Transaction event itself — Transaction satellite.' },
+  { id:'payment_method', zone:'hubsat', hub:'Transaction', why:'Descriptive of the Transaction — Transaction satellite.' },
+
+  { id:'quantity', zone:'linksat', hub:null, why:'Only makes sense in the context of THIS transaction + THIS product together — a fact about the relationship, not about any single entity. Link satellite.' },
+  { id:'unit_price', zone:'linksat', hub:null, why:'Price at the moment of THIS sale — varies by transaction line, not a fixed attribute of the Product itself. Link satellite.' },
+];
+
+let placement = {};   // id -> zone the user placed it in
+let selected = null;
+
+function renderPool(){
+  const pool = document.getElementById('pool');
+  pool.innerHTML = '';
+  columns.forEach(c=>{
+    if(placement[c.id]) return;
+    const chip = document.createElement('div');
+    chip.className = 'chip' + (selected===c.id ? ' selected' : '');
+    chip.textContent = c.id;
+    chip.onclick = (e)=>{ e.stopPropagation(); selected = (selected===c.id) ? null : c.id; renderPool(); };
+    pool.appendChild(chip);
+  });
+}
+
+function renderZones(){
+  ['hub','hubsat','linksat'].forEach(z=>{
+    const el = document.getElementById('chips-'+z);
+    el.innerHTML = '';
+    columns.filter(c=>placement[c.id]===z).forEach(c=>{
+      const chip = document.createElement('div');
+      chip.className = 'chip';
+      chip.textContent = c.id;
+      chip.onclick = (e)=>{ e.stopPropagation(); delete placement[c.id]; renderPool(); renderZones(); };
+      el.appendChild(chip);
+    });
+  });
+}
+
+function placeSelected(zone){
+  if(!selected) return;
+  placement[selected] = zone;
+  selected = null;
+  renderPool();
+  renderZones();
+  document.getElementById('scorebar').classList.remove('show');
+}
+
+function checkAnswers(){
+  let correct = 0, total = columns.length, placed = 0;
+  columns.forEach(c=>{
+    if(placement[c.id]){
+      placed++;
+      if(placement[c.id] === c.zone) correct++;
+    }
+  });
+  const bar = document.getElementById('scorebar');
+  bar.classList.add('show');
+  if(placed < total){
+    bar.innerHTML = `<b>${placed} of ${total}</b> columns placed. Place all of them, then check again.`;
+    return;
+  }
+  bar.innerHTML = `<b>${correct} of ${total}</b> correct. ${correct===total ? 'Clean model — nice work.' : 'Tap "Reveal the diagram" to see the reasoning on any you want to double check.'}`;
+
+  // re-render zones with correctness coloring + why on click
+  ['hub','hubsat','linksat'].forEach(z=>{
+    const el = document.getElementById('chips-'+z);
+    el.innerHTML = '';
+    columns.filter(c=>placement[c.id]===z).forEach(c=>{
+      const chip = document.createElement('div');
+      const isRight = c.zone === z;
+      chip.className = 'chip ' + (isRight ? 'correct' : 'incorrect');
+      chip.textContent = c.id;
+      chip.title = c.why;
+      chip.onclick = (e)=>{ e.stopPropagation(); alert(c.id + '\n\n' + c.why + (isRight? '' : '\n\nCorrect zone: ' + (c.zone==='hub'?'HUB':c.zone==='hubsat'?'HUB SATELLITE':'LINK SATELLITE'))); };
+      el.appendChild(chip);
+    });
+  });
+}
+
+function resetAll(){
+  placement = {};
+  selected = null;
+  document.getElementById('scorebar').classList.remove('show');
+  document.getElementById('diagramPanel').classList.remove('show');
+  renderPool();
+  renderZones();
+}
+
+function revealDiagram(){
+  const body = document.getElementById('diagramBody');
+  const hubs = ['Transaction','Customer','Product','Store'];
+  let html = '<div class="dhub-row">';
+  hubs.forEach(h=>{ html += `<div class="dbox hub">HUB: ${h}</div>`; });
+  html += '</div>';
+  html += '<div style="text-align:center;"><div class="dline" style="margin:0 auto;"></div></div>';
+  html += '<div class="dbox link">LINK: Sale &nbsp;—&nbsp; ties Transaction + Customer + Product + Store together';
+  html += columns.filter(c=>c.zone==='linksat').map(c=>`<div class="dbox sat">SAT: ${c.id}</div>`).join('');
+  html += '</div>';
+
+  html += '<div class="dhub-row" style="margin-top:14px;">';
+  hubs.forEach(h=>{
+    const sats = columns.filter(c=>c.zone==='hubsat' && c.hub===h);
+    html += `<div class="dcol"><div class="dbox hub" style="font-size:10px;">${h}</div><div class="dline"></div>`;
+    sats.forEach(s=>{ html += `<div class="dbox sat">SAT: ${s.id}</div>`; });
+    html += '</div>';
+  });
+  html += '</div>';
+
+  body.innerHTML = html;
+  document.getElementById('diagramPanel').classList.add('show');
+}
+
+renderPool();
+renderZones();
+</script>
+</body>
+</html>
