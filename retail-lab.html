@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Retail Data Vault — Modeling Lab</title>
+<title>Data Vault Modeling Lab</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Inter:wght@400;500;600;700;800&display=swap');
 
@@ -28,25 +28,31 @@
   .eyebrow{ font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:2px; color:var(--dim); text-transform:uppercase; margin-bottom:8px;}
   h1{ font-size:25px; font-weight:800; letter-spacing:-0.02em; margin-bottom:6px;}
   h1 span{ color:var(--dim); font-weight:500;}
-  .sub{ color:var(--dim); font-size:13.5px; margin-bottom:20px; max-width:60ch;}
+  .sub{ color:var(--dim); font-size:13.5px; margin-bottom:18px; max-width:60ch;}
+
+  .dstabs{ display:flex; gap:8px; margin-bottom:20px; flex-wrap:wrap; }
+  .dstab{
+    font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:700; letter-spacing:0.5px;
+    padding:10px 16px; border-radius:9px; border:1.5px solid var(--edge); background:var(--panel2);
+    color:var(--dim); cursor:pointer;
+  }
+  .dstab.active{ color:var(--hash); border-color:var(--hash); background:rgba(111,168,255,0.1); }
+  .dstab .emoji{ margin-right:6px; }
 
   .panel{ background:var(--panel); border:1px solid var(--edge); border-radius:14px; padding:18px; margin-bottom:16px;}
   .panel-title{ font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:var(--dim); margin-bottom:14px; }
 
-  /* raw data preview */
   .tblwrap{ overflow-x:auto; }
   table{ border-collapse:collapse; font-size:11.5px; width:100%; min-width:640px; }
   th{ text-align:left; font-family:'JetBrains Mono',monospace; font-size:9.5px; letter-spacing:0.5px; text-transform:uppercase; color:var(--dim); padding:6px 8px; border-bottom:1px solid var(--edge); white-space:nowrap; }
   td{ padding:6px 8px; border-bottom:1px solid var(--edge); font-family:'JetBrains Mono',monospace; white-space:nowrap; }
 
-  /* zones */
   .zones{ display:grid; grid-template-columns:1fr; gap:12px; margin-bottom:16px; }
   @media(min-width:640px){ .zones{ grid-template-columns:1fr 1fr 1fr; } }
   .zone{
     border:1.5px dashed var(--edge); border-radius:12px; padding:12px; min-height:120px;
     background:var(--panel2); transition: border-color 0.15s ease, background 0.15s ease;
   }
-  .zone.dragover{ border-color:var(--hash); background:rgba(111,168,255,0.06); }
   .zone-head{ display:flex; align-items:center; gap:7px; margin-bottom:10px; }
   .zone-dot{ width:9px; height:9px; border-radius:50%; flex-shrink:0; }
   .zone-dot.hub{ background:var(--hub); } .zone-dot.hubsat{ background:var(--sat); } .zone-dot.linksat{ background:var(--link); }
@@ -66,8 +72,6 @@
   .chip.correct{ border-color:var(--good); background:rgba(126,227,201,0.1); }
   .chip.incorrect{ border-color:var(--bad); background:rgba(255,107,122,0.1); }
 
-  .hint{ font-size:10.5px; color:var(--dim); margin-top:2px; display:block; }
-
   .btnrow{ display:flex; gap:10px; flex-wrap:wrap; margin-top:4px; }
   button{
     font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:700; letter-spacing:0.5px;
@@ -85,18 +89,16 @@
   .scorebar.show{ display:block; }
   .scorebar b{ color:var(--hash); }
 
-  /* diagram */
   .diagram{ display:none; margin-top:6px; }
   .diagram.show{ display:block; }
   .dhub-row{ display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin-bottom:8px; }
   .dbox{ border-radius:9px; padding:9px 13px; font-family:'JetBrains Mono',monospace; font-size:11.5px; text-align:center; min-width:90px; }
   .dbox.hub{ background:rgba(255,180,84,0.12); border:1.5px solid var(--hub); color:var(--hub); font-weight:700; }
-  .dbox.link{ background:rgba(126,227,201,0.12); border:1.5px solid var(--link); color:var(--link); font-weight:700; margin:10px auto; max-width:260px; text-align:center; }
+  .dbox.link{ background:rgba(126,227,201,0.12); border:1.5px solid var(--link); color:var(--link); font-weight:700; margin:10px auto; max-width:340px; text-align:center; }
   .dbox.sat{ background:rgba(255,107,122,0.1); border:1px solid rgba(255,107,122,0.4); color:var(--text); font-size:10.5px; margin-top:6px; }
   .dcol{ display:flex; flex-direction:column; align-items:center; }
   .dline{ width:1.5px; height:14px; background:var(--edge); }
 
-  /* comparison */
   .comptable{ width:100%; border-collapse:collapse; font-size:12.5px; }
   .comptable th{ text-transform:none; font-size:11px; padding:10px 10px; }
   .comptable td{ padding:10px 10px; font-family:'Inter',sans-serif; font-size:12.5px; vertical-align:top; white-space:normal; }
@@ -123,67 +125,41 @@
     <a href="index.html">Reference card</a>
     <a href="simulator.html">Data Vault simulator</a>
     <a href="hashing.html">Hashing lab</a>
-    <a href="retail-lab.html" class="active">Retail modeling lab</a>
+    <a href="retail-lab.html" class="active">Modeling lab</a>
   </div>
 
-  <div class="eyebrow">Interactive · retail dataset</div>
+  <div class="eyebrow">Interactive · pick an industry</div>
   <h1>Model it <span>yourself</span></h1>
-  <p class="sub">Below is a flat retail extract — the kind of ugly denormalized file a source system actually hands you. Tap a column, then tap where it belongs. Tap a placed column to send it back.</p>
+  <p class="sub">Below is a flat extract — the kind of ugly denormalized file a source system actually hands you. Tap a column, then tap where it belongs. Tap a placed column to send it back.</p>
 
-  <!-- RAW DATA -->
+  <div class="dstabs" id="dsTabs"></div>
+
   <div class="panel">
-    <div class="panel-title">RAW_RETAIL_SALES — one flat file, no structure</div>
+    <div class="panel-title" id="rawTitle"></div>
     <div class="tblwrap">
-      <table>
-        <tr>
-          <th>transaction_id</th><th>customer_id</th><th>customer_name</th><th>customer_email</th>
-          <th>loyalty_tier</th><th>product_id</th><th>product_name</th><th>category</th>
-          <th>store_id</th><th>store_location</th><th>order_date</th><th>payment_method</th>
-          <th>quantity</th><th>unit_price</th>
-        </tr>
-        <tr>
-          <td>TXN-55012</td><td>CUST-2291</td><td>D. Alvarez</td><td>d.alvarez@mail.com</td>
-          <td>Gold</td><td>SKU-8841</td><td>Cold Brew 32oz</td><td>Beverages</td>
-          <td>STR-014</td><td>West Chester, PA</td><td>2026-06-14</td><td>Credit</td>
-          <td>2</td><td>4.29</td>
-        </tr>
-        <tr>
-          <td>TXN-55013</td><td>CUST-1187</td><td>M. Chen</td><td>m.chen@mail.com</td>
-          <td>Silver</td><td>SKU-2210</td><td>Hoagie - Italian</td><td>Deli</td>
-          <td>STR-014</td><td>West Chester, PA</td><td>2026-06-14</td><td>Debit</td>
-          <td>1</td><td>8.99</td>
-        </tr>
-        <tr>
-          <td>TXN-55014</td><td>CUST-2291</td><td>D. Alvarez</td><td>d.alvarez@mail.com</td>
-          <td>Gold</td><td>SKU-1150</td><td>Fuel - Regular</td><td>Fuel</td>
-          <td>STR-022</td><td>Media, PA</td><td>2026-06-15</td><td>Credit</td>
-          <td>11</td><td>3.19</td>
-        </tr>
-      </table>
+      <table id="rawTable"></table>
     </div>
   </div>
 
-  <!-- COLUMN POOL -->
   <div class="panel">
     <div class="panel-title">Unplaced columns — tap one, then tap a zone below</div>
     <div class="pool" id="pool"></div>
   </div>
 
-  <!-- ZONES -->
   <div class="zones">
-    <div class="zone" id="zone-hub" onclick="placeSelected('hub')">
+    <div class="zone" onclick="placeSelected('hub')">
       <div class="zone-head"><span class="zone-dot hub"></span><span class="zone-title">HUB</span></div>
       <div class="zone-sub">Business keys — one row per real-world thing, never changes</div>
       <div class="zone-chips" id="chips-hub"></div>
     </div>
-    <div class="zone" id="zone-hubsat" onclick="placeSelected('hubsat')">
+    <div class="zone" onclick="placeSelected('hubsat')">
       <div class="zone-head"><span class="zone-dot hubsat"></span><span class="zone-title">HUB SATELLITE</span></div>
       <div class="zone-sub">Descriptive attributes of ONE entity — can change over time</div>
       <div class="zone-chips" id="chips-hubsat"></div>
     </div>
-    <div class="zone" id="zone-linksat" onclick="placeSelected('linksat')">
+    <div class="zone" onclick="placeSelected('linksat')">
       <div class="zone-head"><span class="zone-dot linksat"></span><span class="zone-title">LINK SATELLITE</span></div>
-      <div class="zone-sub">Facts that only exist because of the COMBINATION (this sale, this product, this quantity)</div>
+      <div class="zone-sub">Facts that only exist because of the COMBINATION of keys on this row</div>
       <div class="zone-chips" id="chips-linksat"></div>
     </div>
   </div>
@@ -197,14 +173,12 @@
     <div class="scorebar" id="scorebar"></div>
   </div>
 
-  <!-- DIAGRAM -->
   <div class="panel diagram" id="diagramPanel">
     <div class="panel-title">The resulting model</div>
     <div id="diagramBody"></div>
     <div class="note">Notice: <b>no raw column was ever "the Link."</b> The Link isn't sourced from the file — it's built by combining Hub keys that showed up together on the same row. That's a common trip-up: Links model relationships, not attributes.</div>
   </div>
 
-  <!-- COMPARISON -->
   <div class="panel">
     <div class="panel-title">Why Data Vault over 3NF or Star Schema</div>
     <div class="tblwrap">
@@ -217,60 +191,170 @@
         <tr>
           <td>History usually overwritten on update — you lose what a record looked like yesterday unless you build custom audit tables.</td>
           <td>Handles history via Type 2 dimensions, but retrofitting a new "track this too" attribute means reworking the dimension.</td>
-          <td>History is the default. Every satellite row is dated. Nothing is ever overwritten — you always get built-in history.</td>
+          <td>History is the default. Every satellite row is dated. Nothing is ever overwritten.</td>
         </tr>
         <tr>
           <td>Tightly coupled — a schema change in one table can ripple into every query joining it.</td>
           <td>Fact/dimension grain is fixed early; a new source or new grain often means redesigning the star.</td>
-          <td>Hubs/Links/Satellites load independently and in parallel. A new source just adds a new satellite — existing structures don't change.</td>
+          <td>Hubs/Links/Satellites load independently and in parallel. A new source just adds a new satellite.</td>
         </tr>
         <tr>
           <td>Not built for auditability — hard to prove what the data looked like at a point in time for compliance.</td>
           <td>Better than 3NF, but conformed dimensions across many facts get complex to fully audit.</td>
-          <td>Fully auditable by design — this is exactly why RCM/healthcare and other regulated industries lean on it.</td>
+          <td>Fully auditable by design — why regulated industries (RCM, banking) lean on it.</td>
         </tr>
         <tr>
-          <td>Fast to query for a single transaction, painful for broad reporting.</td>
-          <td>Built for reporting speed — this is Kimball's core strength.</td>
-          <td>Slower to query raw — usually a Business Vault or reporting layer sits on top for performance.</td>
+          <td>Fast for a single transaction, painful for broad reporting.</td>
+          <td>Built for reporting speed — Kimball's core strength.</td>
+          <td>Slower to query raw — usually a Business Vault/reporting layer sits on top.</td>
         </tr>
       </table>
     </div>
 
-    <div class="incident-tie">
-      <b>Why this isn't theoretical for you:</b> when the Ascension watermark bug hit, the damage was contained to two satellites (SAT_REMITTED_CLAIM_ATTR, SAT_REMITTED_SERVICE_ATTR). The Hubs and Links — the actual keys and relationships — were untouched. That's what made a targeted 19.4M-row backfill possible instead of a full reload. In a Star Schema, a bug like that usually means rebuilding the fact table itself, because the broken data and the keys live in the same row.
-    </div>
+    <div class="incident-tie" id="incidentTie"></div>
   </div>
 
 </div>
 
 <script>
-const columns = [
-  { id:'transaction_id', zone:'hub', hub:'Transaction', why:'Uniquely identifies a sale event. Every reference to this transaction anywhere in the source system points back to this one value — that\'s a Hub key.' },
-  { id:'customer_id', zone:'hub', hub:'Customer', why:'Uniquely identifies a customer, independent of any single transaction — a Hub key.' },
-  { id:'product_id', zone:'hub', hub:'Product', why:'Uniquely identifies a SKU/product — a Hub key.' },
-  { id:'store_id', zone:'hub', hub:'Store', why:'Uniquely identifies a store location — a Hub key.' },
+const datasets = {
+  retail: {
+    label: 'Retail', emoji: '\ud83d\uded2',
+    rawTitle: 'RAW_RETAIL_SALES \u2014 one flat file, no structure',
+    rawColumns: ['transaction_id','customer_id','customer_name','customer_email','loyalty_tier','product_id','product_name','category','store_id','store_location','order_date','payment_method','quantity','unit_price'],
+    rawRows: [
+      {transaction_id:'TXN-55012', customer_id:'CUST-2291', customer_name:'D. Alvarez', customer_email:'d.alvarez@mail.com', loyalty_tier:'Gold', product_id:'SKU-8841', product_name:'Cold Brew 32oz', category:'Beverages', store_id:'STR-014', store_location:'West Chester, PA', order_date:'2026-06-14', payment_method:'Credit', quantity:'2', unit_price:'4.29'},
+      {transaction_id:'TXN-55013', customer_id:'CUST-1187', customer_name:'M. Chen', customer_email:'m.chen@mail.com', loyalty_tier:'Silver', product_id:'SKU-2210', product_name:'Hoagie - Italian', category:'Deli', store_id:'STR-014', store_location:'West Chester, PA', order_date:'2026-06-14', payment_method:'Debit', quantity:'1', unit_price:'8.99'},
+      {transaction_id:'TXN-55014', customer_id:'CUST-2291', customer_name:'D. Alvarez', customer_email:'d.alvarez@mail.com', loyalty_tier:'Gold', product_id:'SKU-1150', product_name:'Fuel - Regular', category:'Fuel', store_id:'STR-022', store_location:'Media, PA', order_date:'2026-06-15', payment_method:'Credit', quantity:'11', unit_price:'3.19'},
+    ],
+    hubs: ['Transaction','Customer','Product','Store'],
+    linkLabel: 'LINK: Sale \u2014 ties Transaction + Customer + Product + Store together',
+    columns: [
+      { id:'transaction_id', zone:'hub', hub:'Transaction', why:'Uniquely identifies a sale event \u2014 a Hub key.' },
+      { id:'customer_id', zone:'hub', hub:'Customer', why:'Uniquely identifies a customer, independent of any single transaction \u2014 a Hub key.' },
+      { id:'product_id', zone:'hub', hub:'Product', why:'Uniquely identifies a SKU/product \u2014 a Hub key.' },
+      { id:'store_id', zone:'hub', hub:'Store', why:'Uniquely identifies a store location \u2014 a Hub key.' },
+      { id:'customer_name', zone:'hubsat', hub:'Customer', why:'Describes the Customer and can change \u2014 Customer satellite.' },
+      { id:'customer_email', zone:'hubsat', hub:'Customer', why:'Descriptive of Customer, can change \u2014 Customer satellite.' },
+      { id:'loyalty_tier', zone:'hubsat', hub:'Customer', why:'Tier changes over time (Silver \u2192 Gold) \u2014 you want that history preserved.' },
+      { id:'product_name', zone:'hubsat', hub:'Product', why:'Descriptive of Product, can be renamed \u2014 Product satellite.' },
+      { id:'category', zone:'hubsat', hub:'Product', why:'Descriptive of Product, can be reclassified \u2014 Product satellite.' },
+      { id:'store_location', zone:'hubsat', hub:'Store', why:'Stores relocate or rebrand \u2014 Store satellite.' },
+      { id:'order_date', zone:'hubsat', hub:'Transaction', why:'Descriptive of the Transaction event \u2014 Transaction satellite.' },
+      { id:'payment_method', zone:'hubsat', hub:'Transaction', why:'Descriptive of the Transaction \u2014 Transaction satellite.' },
+      { id:'quantity', zone:'linksat', hub:null, why:'Only makes sense in the context of THIS transaction + THIS product together \u2014 Link satellite.' },
+      { id:'unit_price', zone:'linksat', hub:null, why:'Price at the moment of THIS sale, varies by line \u2014 Link satellite.' },
+    ],
+    incidentTie: `<b>Why this isn't theoretical for you:</b> when the Ascension watermark bug hit, the damage was contained to two satellites. The Hubs and Links \u2014 the actual keys and relationships \u2014 were untouched. That's what made a targeted 19.4M-row backfill possible instead of a full reload. In a Star Schema, a bug like that usually means rebuilding the fact table itself, because the broken data and the keys live in the same row.`
+  },
 
-  { id:'customer_name', zone:'hubsat', hub:'Customer', why:'Describes the Customer entity and can change (name correction, marriage) — belongs on a Customer satellite.' },
-  { id:'customer_email', zone:'hubsat', hub:'Customer', why:'Descriptive of Customer, can change — Customer satellite.' },
-  { id:'loyalty_tier', zone:'hubsat', hub:'Customer', why:'Classic satellite case — tier changes over time (Silver → Gold) and you want that history preserved.' },
-  { id:'product_name', zone:'hubsat', hub:'Product', why:'Descriptive of Product, can be renamed/rebranded — Product satellite.' },
-  { id:'category', zone:'hubsat', hub:'Product', why:'Descriptive of Product, can be reclassified — Product satellite.' },
-  { id:'store_location', zone:'hubsat', hub:'Store', why:'Descriptive of Store — stores relocate or rebrand, so this needs history too.' },
-  { id:'order_date', zone:'hubsat', hub:'Transaction', why:'Descriptive of the Transaction event itself — Transaction satellite.' },
-  { id:'payment_method', zone:'hubsat', hub:'Transaction', why:'Descriptive of the Transaction — Transaction satellite.' },
+  healthcare: {
+    label: 'Healthcare RCM', emoji: '\ud83c\udfe5',
+    rawTitle: 'RAW_REMITTANCE_EXTRACT \u2014 one flat file, no structure',
+    rawColumns: ['claim_id','patient_id','patient_name','patient_dob','payer_id','payer_name','provider_id','provider_name','procedure_code','claim_status','file_date','denial_reason','billed_amount','paid_amount'],
+    rawRows: [
+      {claim_id:'CLM-88410', patient_id:'PAT-30291', patient_name:'J. Whitfield', patient_dob:'1978-03-11', payer_id:'PYR-004', payer_name:'Ascension Health Plan', provider_id:'PRV-1102', provider_name:'St. Vincent Medical', procedure_code:'CPT-99213', claim_status:'DENIED', file_date:'2026-05-14', denial_reason:'Missing auth', billed_amount:'420.00', paid_amount:'0.00'},
+      {claim_id:'CLM-88411', patient_id:'PAT-30291', patient_name:'J. Whitfield', patient_dob:'1978-03-11', payer_id:'PYR-004', payer_name:'Ascension Health Plan', provider_id:'PRV-1102', provider_name:'St. Vincent Medical', procedure_code:'CPT-80053', claim_status:'PAID', file_date:'2026-05-15', denial_reason:'', billed_amount:'110.00', paid_amount:'92.50'},
+      {claim_id:'CLM-88420', patient_id:'PAT-30302', patient_name:'R. Osei', patient_dob:'1990-11-02', payer_id:'PYR-009', payer_name:'Sacred Heart Payer Grp', provider_id:'PRV-1140', provider_name:'Sacred Heart Clinic', procedure_code:'CPT-99213', claim_status:'PENDING', file_date:'2026-05-16', denial_reason:'', billed_amount:'420.00', paid_amount:'0.00'},
+    ],
+    hubs: ['Claim','Patient','Payer','Provider','Procedure'],
+    linkLabel: 'LINK: Claim Line \u2014 ties Claim + Patient + Payer + Provider + Procedure together',
+    columns: [
+      { id:'claim_id', zone:'hub', hub:'Claim', why:'Uniquely identifies a claim \u2014 a Hub key.' },
+      { id:'patient_id', zone:'hub', hub:'Patient', why:'Uniquely identifies a patient, independent of any one claim \u2014 a Hub key.' },
+      { id:'payer_id', zone:'hub', hub:'Payer', why:'Uniquely identifies an insurance payer \u2014 a Hub key.' },
+      { id:'provider_id', zone:'hub', hub:'Provider', why:'Uniquely identifies the provider/facility \u2014 a Hub key.' },
+      { id:'procedure_code', zone:'hub', hub:'Procedure', why:'CPT codes are a standardized business key referenced across many claims \u2014 a Hub key, not just a descriptive attribute.' },
+      { id:'patient_name', zone:'hubsat', hub:'Patient', why:'Descriptive of Patient, can be corrected/changed \u2014 Patient satellite.' },
+      { id:'patient_dob', zone:'hubsat', hub:'Patient', why:'Descriptive of Patient \u2014 Patient satellite (rarely changes, but still not a key).' },
+      { id:'payer_name', zone:'hubsat', hub:'Payer', why:'Descriptive of Payer, can be renamed/rebranded \u2014 Payer satellite.' },
+      { id:'provider_name', zone:'hubsat', hub:'Provider', why:'Descriptive of Provider \u2014 Provider satellite.' },
+      { id:'claim_status', zone:'hubsat', hub:'Claim', why:'Exactly the kind of field that changes over time (PENDING \u2192 DENIED \u2192 PAID) \u2014 Claim satellite, and the whole reason satellites version by date.' },
+      { id:'file_date', zone:'hubsat', hub:'Claim', why:'Descriptive of the Claim load event \u2014 this is the exact field that broke in your real incident. Claim satellite.' },
+      { id:'denial_reason', zone:'hubsat', hub:'Claim', why:'Descriptive of the Claim outcome \u2014 Claim satellite.' },
+      { id:'billed_amount', zone:'linksat', hub:null, why:'Only meaningful for THIS claim + THIS procedure combination \u2014 Link satellite.' },
+      { id:'paid_amount', zone:'linksat', hub:null, why:'Varies by claim/procedure line and can be adjusted \u2014 Link satellite.' },
+    ],
+    incidentTie: `<b>This is your actual production incident, structurally:</b> FILE_DATE lives in the Claim satellite \u2014 exactly the field that went NULL when the AHS_STAGE01 watermark got stuck. Because Hubs and Links (claim_id, patient_id, payer_id, provider_id, and the relationships between them) were never touched, the fix was a contained, targeted backfill of ~19.4M satellite rows \u2014 not a full reload of the claims model.`
+  },
 
-  { id:'quantity', zone:'linksat', hub:null, why:'Only makes sense in the context of THIS transaction + THIS product together — a fact about the relationship, not about any single entity. Link satellite.' },
-  { id:'unit_price', zone:'linksat', hub:null, why:'Price at the moment of THIS sale — varies by transaction line, not a fixed attribute of the Product itself. Link satellite.' },
-];
+  financial: {
+    label: 'Financial Services', emoji: '\ud83d\udcb3',
+    rawTitle: 'RAW_TRANSACTION_EXTRACT \u2014 one flat file, no structure',
+    rawColumns: ['transaction_id','account_id','account_holder_name','account_type','branch_id','branch_location','merchant_id','merchant_name','merchant_category','transaction_date','transaction_type','fraud_flag','amount','currency'],
+    rawRows: [
+      {transaction_id:'TXN-90021', account_id:'ACC-44210', account_holder_name:'K. Novak', account_type:'Checking', branch_id:'BR-009', branch_location:'West Chester, PA', merchant_id:'MER-3301', merchant_name:'Wawa #014', merchant_category:'Fuel/Convenience', transaction_date:'2026-06-20', transaction_type:'Debit', fraud_flag:'N', amount:'42.10', currency:'USD'},
+      {transaction_id:'TXN-90022', account_id:'ACC-44210', account_holder_name:'K. Novak', account_type:'Checking', branch_id:'BR-009', branch_location:'West Chester, PA', merchant_id:'MER-5510', merchant_name:'Greenline Market', merchant_category:'Grocery', transaction_date:'2026-06-20', transaction_type:'Debit', fraud_flag:'N', amount:'118.44', currency:'USD'},
+      {transaction_id:'TXN-90031', account_id:'ACC-51087', account_holder_name:'T. Brandt', account_type:'Savings', branch_id:'BR-012', branch_location:'Media, PA', merchant_id:'MER-3301', merchant_name:'Wawa #014', merchant_category:'Fuel/Convenience', transaction_date:'2026-06-21', transaction_type:'Debit', fraud_flag:'Y', amount:'611.00', currency:'USD'},
+    ],
+    hubs: ['Transaction','Account','Branch','Merchant'],
+    linkLabel: 'LINK: Purchase \u2014 ties Transaction + Account + Branch + Merchant together',
+    columns: [
+      { id:'transaction_id', zone:'hub', hub:'Transaction', why:'Uniquely identifies a transaction event \u2014 a Hub key.' },
+      { id:'account_id', zone:'hub', hub:'Account', why:'Uniquely identifies an account, independent of any single transaction \u2014 a Hub key.' },
+      { id:'branch_id', zone:'hub', hub:'Branch', why:'Uniquely identifies a branch \u2014 a Hub key.' },
+      { id:'merchant_id', zone:'hub', hub:'Merchant', why:'Uniquely identifies a merchant \u2014 a Hub key.' },
+      { id:'account_holder_name', zone:'hubsat', hub:'Account', why:'Descriptive of Account, can change (marriage, correction) \u2014 Account satellite.' },
+      { id:'account_type', zone:'hubsat', hub:'Account', why:'Can change (Checking \u2194 Savings conversion) \u2014 Account satellite.' },
+      { id:'branch_location', zone:'hubsat', hub:'Branch', why:'Branches relocate or rebrand \u2014 Branch satellite.' },
+      { id:'merchant_name', zone:'hubsat', hub:'Merchant', why:'Descriptive of Merchant, can change \u2014 Merchant satellite.' },
+      { id:'merchant_category', zone:'hubsat', hub:'Merchant', why:'Descriptive of Merchant, can be reclassified \u2014 Merchant satellite.' },
+      { id:'transaction_date', zone:'hubsat', hub:'Transaction', why:'Descriptive of the Transaction event \u2014 Transaction satellite.' },
+      { id:'transaction_type', zone:'hubsat', hub:'Transaction', why:'Descriptive of the Transaction \u2014 Transaction satellite.' },
+      { id:'fraud_flag', zone:'hubsat', hub:'Transaction', why:'Exactly the kind of field that changes AFTER the fact (flagged post-hoc) \u2014 you need dated history of that flag changing, so Transaction satellite.' },
+      { id:'amount', zone:'linksat', hub:null, why:'Only meaningful for THIS transaction + THIS account + THIS merchant combination \u2014 Link satellite.' },
+      { id:'currency', zone:'linksat', hub:null, why:'Tied to the specific transaction line, not a fixed attribute of any single entity \u2014 Link satellite.' },
+    ],
+    incidentTie: `<b>Same failure mode, different industry:</b> if a watermark got stuck feeding the Transaction satellite here, fraud_flag or transaction_date could silently go stale or NULL \u2014 and you'd see it exactly the way you saw the Ascension gap: reporting quietly drops rows instead of throwing an error. The contained blast radius (one satellite, not the whole model) is what makes Data Vault forgiving of this class of bug.`
+  }
+};
 
-let placement = {};   // id -> zone the user placed it in
+let currentDataset = 'retail';
+let placement = {};
 let selected = null;
 
+function renderTabs(){
+  const tabs = document.getElementById('dsTabs');
+  tabs.innerHTML = '';
+  Object.keys(datasets).forEach(key=>{
+    const d = datasets[key];
+    const btn = document.createElement('div');
+    btn.className = 'dstab' + (key===currentDataset ? ' active' : '');
+    btn.innerHTML = `<span class="emoji">${d.emoji}</span>${d.label}`;
+    btn.onclick = ()=> switchDataset(key);
+    tabs.appendChild(btn);
+  });
+}
+
+function switchDataset(key){
+  currentDataset = key;
+  placement = {};
+  selected = null;
+  document.getElementById('scorebar').classList.remove('show');
+  document.getElementById('diagramPanel').classList.remove('show');
+  renderTabs();
+  renderRawTable();
+  renderPool();
+  renderZones();
+  document.getElementById('incidentTie').innerHTML = datasets[key].incidentTie;
+}
+
+function renderRawTable(){
+  const d = datasets[currentDataset];
+  document.getElementById('rawTitle').textContent = d.rawTitle;
+  const table = document.getElementById('rawTable');
+  let html = '<tr>' + d.rawColumns.map(c=>`<th>${c}</th>`).join('') + '</tr>';
+  d.rawRows.forEach(row=>{
+    html += '<tr>' + d.rawColumns.map(c=>`<td>${row[c]===''?'<span style="color:var(--dim)">\u2014</span>':row[c]}</td>`).join('') + '</tr>';
+  });
+  table.innerHTML = html;
+}
+
 function renderPool(){
+  const d = datasets[currentDataset];
   const pool = document.getElementById('pool');
   pool.innerHTML = '';
-  columns.forEach(c=>{
+  d.columns.forEach(c=>{
     if(placement[c.id]) return;
     const chip = document.createElement('div');
     chip.className = 'chip' + (selected===c.id ? ' selected' : '');
@@ -281,10 +365,11 @@ function renderPool(){
 }
 
 function renderZones(){
+  const d = datasets[currentDataset];
   ['hub','hubsat','linksat'].forEach(z=>{
     const el = document.getElementById('chips-'+z);
     el.innerHTML = '';
-    columns.filter(c=>placement[c.id]===z).forEach(c=>{
+    d.columns.filter(c=>placement[c.id]===z).forEach(c=>{
       const chip = document.createElement('div');
       chip.className = 'chip';
       chip.textContent = c.id;
@@ -304,8 +389,9 @@ function placeSelected(zone){
 }
 
 function checkAnswers(){
-  let correct = 0, total = columns.length, placed = 0;
-  columns.forEach(c=>{
+  const d = datasets[currentDataset];
+  let correct = 0, total = d.columns.length, placed = 0;
+  d.columns.forEach(c=>{
     if(placement[c.id]){
       placed++;
       if(placement[c.id] === c.zone) correct++;
@@ -317,18 +403,16 @@ function checkAnswers(){
     bar.innerHTML = `<b>${placed} of ${total}</b> columns placed. Place all of them, then check again.`;
     return;
   }
-  bar.innerHTML = `<b>${correct} of ${total}</b> correct. ${correct===total ? 'Clean model — nice work.' : 'Tap "Reveal the diagram" to see the reasoning on any you want to double check.'}`;
+  bar.innerHTML = `<b>${correct} of ${total}</b> correct. ${correct===total ? 'Clean model \u2014 nice work.' : 'Tap any colored chip below to see the reasoning.'}`;
 
-  // re-render zones with correctness coloring + why on click
   ['hub','hubsat','linksat'].forEach(z=>{
     const el = document.getElementById('chips-'+z);
     el.innerHTML = '';
-    columns.filter(c=>placement[c.id]===z).forEach(c=>{
+    d.columns.filter(c=>placement[c.id]===z).forEach(c=>{
       const chip = document.createElement('div');
       const isRight = c.zone === z;
       chip.className = 'chip ' + (isRight ? 'correct' : 'incorrect');
       chip.textContent = c.id;
-      chip.title = c.why;
       chip.onclick = (e)=>{ e.stopPropagation(); alert(c.id + '\n\n' + c.why + (isRight? '' : '\n\nCorrect zone: ' + (c.zone==='hub'?'HUB':c.zone==='hubsat'?'HUB SATELLITE':'LINK SATELLITE'))); };
       el.appendChild(chip);
     });
@@ -345,19 +429,19 @@ function resetAll(){
 }
 
 function revealDiagram(){
+  const d = datasets[currentDataset];
   const body = document.getElementById('diagramBody');
-  const hubs = ['Transaction','Customer','Product','Store'];
   let html = '<div class="dhub-row">';
-  hubs.forEach(h=>{ html += `<div class="dbox hub">HUB: ${h}</div>`; });
+  d.hubs.forEach(h=>{ html += `<div class="dbox hub">HUB: ${h}</div>`; });
   html += '</div>';
   html += '<div style="text-align:center;"><div class="dline" style="margin:0 auto;"></div></div>';
-  html += '<div class="dbox link">LINK: Sale &nbsp;—&nbsp; ties Transaction + Customer + Product + Store together';
-  html += columns.filter(c=>c.zone==='linksat').map(c=>`<div class="dbox sat">SAT: ${c.id}</div>`).join('');
+  html += `<div class="dbox link">${d.linkLabel}`;
+  html += d.columns.filter(c=>c.zone==='linksat').map(c=>`<div class="dbox sat">SAT: ${c.id}</div>`).join('');
   html += '</div>';
 
   html += '<div class="dhub-row" style="margin-top:14px;">';
-  hubs.forEach(h=>{
-    const sats = columns.filter(c=>c.zone==='hubsat' && c.hub===h);
+  d.hubs.forEach(h=>{
+    const sats = d.columns.filter(c=>c.zone==='hubsat' && c.hub===h);
     html += `<div class="dcol"><div class="dbox hub" style="font-size:10px;">${h}</div><div class="dline"></div>`;
     sats.forEach(s=>{ html += `<div class="dbox sat">SAT: ${s.id}</div>`; });
     html += '</div>';
@@ -368,8 +452,11 @@ function revealDiagram(){
   document.getElementById('diagramPanel').classList.add('show');
 }
 
+renderTabs();
+renderRawTable();
 renderPool();
 renderZones();
+document.getElementById('incidentTie').innerHTML = datasets[currentDataset].incidentTie;
 </script>
 </body>
 </html>
