@@ -135,7 +135,7 @@
 
   <div class="eyebrow">Interactive · pick an industry and a methodology</div>
   <h1>Model it <span>three ways</span></h1>
-  <p class="sub">Same flat source data. Same columns. Classify them under Data Vault, then switch methodology and watch where the same column lands under Kimball Star Schema or a normalized Snowflake Schema.</p>
+  <p class="sub">Same flat source data. Same columns. Classify them under Data Vault, then switch methodology — Star, Snowflake, 3NF, Anchor Modeling, or One Big Table — and watch where the same column lands.</p>
 
   <div class="tabgroup-label">Industry</div>
   <div class="dstabs" id="dsTabs"></div>
@@ -214,6 +214,16 @@
     <div class="incident-tie" id="incidentTie"></div>
   </div>
 
+  <div class="panel">
+    <div class="panel-title">Two more terms worth knowing (not schema patterns)</div>
+    <div class="note">
+      <b>Data Mesh</b> isn't a table-level schema like the six above — it's an org-level strategy where each business domain owns and publishes its own data as a product, instead of one central team owning a monolithic warehouse. You could build Data Vault, Star Schema, or anything else <em>inside</em> a Data Mesh domain — it answers "who owns this data," not "how is this table shaped."
+    </div>
+    <div class="note" style="margin-top:10px;">
+      <b>Medallion Architecture (Bronze / Silver / Gold)</b> is a layering strategy, not a competing model either. Bronze = raw landed data, Silver = cleaned/conformed, Gold = business-ready. Data Vault is a common choice for the Silver layer specifically because of its auditability — then a Gold-layer Star Schema often sits on top for reporting speed. The two work together constantly, they're not alternatives.
+    </div>
+  </div>
+
 </div>
 
 <script>
@@ -244,8 +254,43 @@ const methodologies = {
       { key:'dimension', title:'DIMENSION', sub:'Primary descriptive table for one entity', color:'hubsat' },
       { key:'subdimension', title:'SUB-DIMENSION', sub:'Normalized out of a dimension to remove redundancy (a hierarchy level)', color:'hub' },
     ]
+  },
+  threenf: {
+    name:'3NF (Normalized)', emoji:'\ud83d\uddc4\ufe0f',
+    explain:'<b>3NF (Third Normal Form):</b> the classic OLTP approach — every entity gets its own table, no repeating groups, no transitive dependencies. Actually very close in spirit to Data Vault\'s Hub/Satellite split — the real difference is 3NF doesn\'t build in history or load independence by default.',
+    zones: [
+      { key:'key', title:'KEY', sub:'Primary or foreign key on a normalized entity or junction table', color:'hub' },
+      { key:'attribute', title:'ATTRIBUTE', sub:'Non-key descriptive column, stored once on its entity table — no redundancy', color:'hubsat' },
+      { key:'junction_attribute', title:'JUNCTION ATTRIBUTE', sub:'Column that only makes sense on the table joining two or more entities together', color:'linksat' },
+    ]
+  },
+  anchor: {
+    name:'Anchor Modeling', emoji:'\u2693',
+    explain:'<b>Anchor Modeling:</b> Data Vault\'s more extreme cousin. Same instinct — separate keys, relationships, and descriptive history — but taken further: every single attribute gets its OWN table instead of being grouped like a DV satellite, maximizing flexibility at the cost of a lot more joins.',
+    zones: [
+      { key:'anchor', title:'ANCHOR', sub:'A stable identity — even leaner than a Hub, just a surrogate key', color:'hub' },
+      { key:'attribute', title:'ATTRIBUTE', sub:'Each one is its own historized table, one attribute at a time — not grouped', color:'hubsat' },
+      { key:'tie_attribute', title:'TIE', sub:'A historized relationship between anchors — Anchor Modeling\'s version of a Link', color:'linksat' },
+    ]
+  },
+  obt: {
+    name:'One Big Table', emoji:'\ud83d\udcc4',
+    explain:'<b>One Big Table (OBT):</b> skip modeling entirely — flatten every source into one wide denormalized table. Zero joins, fastest to query, but every entity attribute gets duplicated on every row that references it.',
+    zones: [
+      { key:'all', title:'ONE BIG TABLE', sub:'Every column lives on the same row — there\'s nothing to separate', color:'linksat' },
+    ]
   }
 };
+
+// Derive 3NF / Anchor / OBT classifications from the Data Vault answer key —
+// same underlying logic (key vs. descriptive attribute vs. relationship fact),
+// different vocabulary and grouping granularity.
+function deriveColumns(dvColumns, zoneMap){
+  return dvColumns.map(c => ({ id:c.id, zone: zoneMap[c.zone], hub:c.hub, why:c.why }));
+}
+const ZONE_MAP_3NF     = { hub:'key', hubsat:'attribute', linksat:'junction_attribute' };
+const ZONE_MAP_ANCHOR  = { hub:'anchor', hubsat:'attribute', linksat:'tie_attribute' };
+const ZONE_MAP_OBT     = { hub:'all', hubsat:'all', linksat:'all' };
 
 // ===================== DATASETS =====================
 const datasets = {
@@ -459,7 +504,16 @@ let currentMethodology = 'dv';
 let placement = {};
 let selected = null;
 
-function currentDS(){ return datasets[currentDataset][currentMethodology]; }
+function currentColumns(){
+  const dvCols = datasets[currentDataset].dv.columns;
+  if(currentMethodology === 'dv') return dvCols;
+  if(currentMethodology === 'star') return datasets[currentDataset].star.columns;
+  if(currentMethodology === 'snowflake') return datasets[currentDataset].snowflake.columns;
+  if(currentMethodology === 'threenf') return deriveColumns(dvCols, ZONE_MAP_3NF);
+  if(currentMethodology === 'anchor') return deriveColumns(dvCols, ZONE_MAP_ANCHOR);
+  if(currentMethodology === 'obt') return deriveColumns(dvCols, ZONE_MAP_OBT);
+  return dvCols;
+}
 
 function renderTabs(){
   const tabs = document.getElementById('dsTabs');
@@ -534,7 +588,7 @@ function renderZonesContainer(){
 }
 
 function renderPool(){
-  const cols = currentDS().columns;
+  const cols = currentColumns();
   const pool = document.getElementById('pool');
   pool.innerHTML = '';
   cols.forEach(c=>{
@@ -549,7 +603,7 @@ function renderPool(){
 
 function renderZones(){
   const meth = methodologies[currentMethodology];
-  const cols = currentDS().columns;
+  const cols = currentColumns();
   meth.zones.forEach(z=>{
     const el = document.getElementById('chips-'+z.key);
     if(!el) return;
@@ -574,7 +628,7 @@ function placeSelected(zoneKey){
 }
 
 function checkAnswers(){
-  const cols = currentDS().columns;
+  const cols = currentColumns();
   let correct = 0, total = cols.length, placed = 0;
   cols.forEach(c=>{
     if(placement[c.id]){
@@ -621,28 +675,64 @@ function resetPlacement(){
 
 function revealDiagram(){
   const d = datasets[currentDataset];
-  const cols = currentDS().columns;
+  const cols = currentColumns();
   const body = document.getElementById('diagramBody');
   const noteEl = document.getElementById('diagramNote');
   let html = '';
 
-  if(currentMethodology === 'dv'){
+  if(currentMethodology === 'dv' || currentMethodology === 'threenf'){
+    const keyZone = currentMethodology==='dv' ? 'hub' : 'key';
+    const attrZone = currentMethodology==='dv' ? 'hubsat' : 'attribute';
+    const juncZone = currentMethodology==='dv' ? 'linksat' : 'junction_attribute';
+    const keyLabel = currentMethodology==='dv' ? 'HUB' : 'TABLE';
+    const attrLabel = currentMethodology==='dv' ? 'SAT' : 'COL';
+    const juncTitle = currentMethodology==='dv' ? d.dv.linkLabel : d.dv.linkLabel.replace('LINK:', 'JUNCTION TABLE:');
+
     html += '<div class="dhub-row">';
-    d.dv.hubs.forEach(h=>{ html += `<div class="dbox hub">HUB: ${h}</div>`; });
+    d.dv.hubs.forEach(h=>{ html += `<div class="dbox hub">${keyLabel}: ${h}</div>`; });
     html += '</div>';
     html += '<div style="text-align:center;"><div class="dline" style="margin:0 auto;"></div></div>';
-    html += `<div class="dbox link">${d.dv.linkLabel}`;
-    html += cols.filter(c=>c.zone==='linksat').map(c=>`<div class="dbox sat">SAT: ${c.id}</div>`).join('');
+    html += `<div class="dbox link">${juncTitle}`;
+    html += cols.filter(c=>c.zone===juncZone).map(c=>`<div class="dbox sat">${attrLabel}: ${c.id}</div>`).join('');
     html += '</div>';
     html += '<div class="dhub-row" style="margin-top:14px;">';
     d.dv.hubs.forEach(h=>{
-      const sats = cols.filter(c=>c.zone==='hubsat' && c.hub===h);
+      const attrs = cols.filter(c=>c.zone===attrZone && c.hub===h);
       html += `<div class="dcol"><div class="dbox hub" style="font-size:10px;">${h}</div><div class="dline"></div>`;
-      sats.forEach(s=>{ html += `<div class="dbox sat">SAT: ${s.id}</div>`; });
+      attrs.forEach(s=>{ html += `<div class="dbox sat">${attrLabel}: ${s.id}</div>`; });
       html += '</div>';
     });
     html += '</div>';
-    noteEl.innerHTML = `Notice: <b>no raw column was ever "the Link."</b> The Link isn't sourced from the file \u2014 it's built by combining Hub keys that showed up together on the same row.`;
+    noteEl.innerHTML = currentMethodology==='dv'
+      ? `Notice: <b>no raw column was ever "the Link."</b> The Link isn't sourced from the file \u2014 it's built by combining Hub keys that showed up together on the same row.`
+      : `Structurally almost identical to Data Vault \u2014 that's the point. 3NF gets you most of the way there logically. What it's missing is built-in dated history and independent load paths for each table.`;
+
+  } else if(currentMethodology === 'anchor'){
+    html += '<div class="dhub-row">';
+    d.dv.hubs.forEach(h=>{ html += `<div class="dbox hub">ANCHOR: ${h}</div>`; });
+    html += '</div>';
+    html += '<div style="text-align:center;"><div class="dline" style="margin:0 auto;"></div></div>';
+    html += `<div class="dbox link">TIE \u2014 ${d.dv.linkLabel.replace('LINK: ', '')}`;
+    html += cols.filter(c=>c.zone==='tie_attribute').map(c=>`<div class="dbox sat">TIE-ATTR: ${c.id}</div>`).join('');
+    html += '</div>';
+    html += '<div class="dhub-row" style="margin-top:14px; align-items:flex-start;">';
+    d.dv.hubs.forEach(h=>{
+      const attrs = cols.filter(c=>c.zone==='attribute' && c.hub===h);
+      html += `<div class="dcol"><div class="dbox hub" style="font-size:10px;">${h}</div>`;
+      attrs.forEach(s=>{
+        html += `<div class="dline"></div><div class="dbox sat" style="border-color:var(--hash); color:var(--hash); background:rgba(111,168,255,0.08);">ATTR TABLE: ${s.id}</div>`;
+      });
+      html += '</div>';
+    });
+    html += '</div>';
+    noteEl.innerHTML = `Notice each attribute got its own standalone box instead of being grouped under one entity, unlike the Data Vault diagram. That's the real distinction: Anchor Modeling pushes decomposition all the way down to one attribute per table \u2014 maximally flexible, but a query touching 5 attributes now means 5 joins instead of 1.`;
+
+  } else if(currentMethodology === 'obt'){
+    html += `<div class="dbox link" style="max-width:100%;">ONE BIG TABLE \u2014 every column, every row, all flattened together`;
+    html += cols.map(c=>`<div class="dbox sat">${c.id}</div>`).join('');
+    html += '</div>';
+    noteEl.innerHTML = `There's no structure to reveal \u2014 that's the whole tradeoff. Every attribute of every entity now repeats on every row that references it: <b>customer_name</b> is duplicated on every transaction that customer makes, <b>product_name</b> on every sale of that product. Fast and simple to query, but storage balloons and a single source correction means updating potentially millions of duplicated rows instead of one.`;
+
   } else {
     // star or snowflake
     const factCols = cols.filter(c=>c.zone==='fact');
