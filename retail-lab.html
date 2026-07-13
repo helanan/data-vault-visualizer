@@ -140,6 +140,19 @@
   <div class="tabgroup-label">Industry</div>
   <div class="dstabs" id="dsTabs"></div>
 
+  <div class="panel" id="customPanel" style="display:none;">
+    <div class="panel-title">Describe your scenario</div>
+    <div class="note" style="margin-top:0; margin-bottom:10px;">Paste your column names — comma-separated, one per line, or a CSV header row. Optionally give the scenario a name. The lab will infer a proposed model from naming conventions (things like <b>_id</b>, <b>amount</b>, <b>date</b>), build the zones, and let you classify against it in any methodology.</div>
+    <div style="margin-bottom:10px;">
+      <input type="text" id="scenarioName" placeholder="Scenario name (e.g. Gas Station Loyalty)" style="width:100%; background:var(--panel2); border:1px solid var(--edge); color:var(--text); padding:10px 12px; border-radius:8px; font-family:'Inter',sans-serif; font-size:14px;">
+    </div>
+    <textarea id="scenarioColumns" rows="4" placeholder="order_id, customer_id, customer_name, product_id, product_name, order_date, quantity, unit_price" style="width:100%; background:var(--panel2); border:1px solid var(--edge); color:var(--text); padding:10px 12px; border-radius:8px; font-family:'JetBrains Mono',monospace; font-size:13px; resize:vertical;"></textarea>
+    <div class="btnrow" style="margin-top:10px;">
+      <button class="primary" onclick="buildScenario()">▸ Build my scenario</button>
+    </div>
+    <div class="note" id="scenarioStatus" style="display:none;"></div>
+  </div>
+
   <div class="tabgroup-label">Methodology</div>
   <div class="dstabs" id="methTabs"></div>
 
@@ -503,12 +516,115 @@ let currentDataset = 'retail';
 let currentMethodology = 'dv';
 let placement = {};
 let selected = null;
+let customPanelOpen = false;
+
+function toggleCustomPanel(){
+  customPanelOpen = !customPanelOpen;
+  renderTabs();
+}
+
+// ============ CUSTOM SCENARIO ENGINE ============
+const MEASURE_WORDS = ['amount','price','qty','quantity','total','balance','cost','rate','fee','charge','paid','billed','discount','tax','units','count','score'];
+const KEY_SUFFIXES = ['_id','_key','_code','_number','_no','_num','_sku'];
+
+function classifyColumn(raw){
+  const col = raw.trim().toLowerCase();
+  // key detection
+  if(KEY_SUFFIXES.some(s=>col.endsWith(s)) || col === 'id' || col === 'sku' || col === 'code'){
+    return { zone:'hub', why:'Ends in a key-style suffix (_id, _code, etc.) \u2014 inferred as a business key / Hub.' };
+  }
+  // measure detection
+  if(MEASURE_WORDS.some(w=>col === w || col.endsWith('_'+w) || col.startsWith(w+'_'))){
+    return { zone:'linksat', why:'Looks like a numeric measure (amount/quantity/price-style name) \u2014 inferred as a fact about the combination of keys, i.e. a Link satellite / Fact measure.' };
+  }
+  // everything else descriptive
+  return { zone:'hubsat', why:'Descriptive attribute \u2014 inferred as satellite/dimension material. It describes an entity and could change over time.' };
+}
+
+function inferEntity(raw, hubNames){
+  // customer_name -> Customer if a customer-ish hub exists
+  const col = raw.trim().toLowerCase();
+  for(const h of hubNames){
+    if(col.startsWith(h.toLowerCase() + '_') || col.includes(h.toLowerCase())) return h;
+  }
+  return hubNames[0] || 'Entity';
+}
+
+function titleCase(s){ return s.replace(/_/g,' ').replace(/\b\w/g, c=>c.toUpperCase()).replace(/ Id$| Key$| Code$| Number$| No$| Num$| Sku$/i,'').trim(); }
+
+function buildScenario(){
+  const rawText = document.getElementById('scenarioColumns').value.trim();
+  const name = document.getElementById('scenarioName').value.trim() || 'Custom Scenario';
+  const status = document.getElementById('scenarioStatus');
+  if(!rawText){
+    status.style.display = 'block';
+    status.innerHTML = 'Paste at least a few column names first.';
+    return;
+  }
+  const colNames = rawText.split(/[\n,;\t]+/).map(c=>c.trim()).filter(c=>c.length > 0);
+  if(colNames.length < 3){
+    status.style.display = 'block';
+    status.innerHTML = 'Need at least 3 columns to build a meaningful model.';
+    return;
+  }
+
+  // first pass: find hubs
+  const dvColumns = [];
+  const hubNames = [];
+  colNames.forEach(c=>{
+    const cls = classifyColumn(c);
+    if(cls.zone === 'hub'){
+      const entity = titleCase(c);
+      if(!hubNames.includes(entity)) hubNames.push(entity);
+    }
+  });
+  if(hubNames.length === 0) hubNames.push('Record');
+
+  // second pass: assign entities
+  colNames.forEach(c=>{
+    const cls = classifyColumn(c);
+    const entity = cls.zone === 'hub' ? titleCase(c) : inferEntity(c, hubNames);
+    dvColumns.push({ id:c, zone:cls.zone, hub: cls.zone==='linksat' ? null : entity, why: cls.why });
+  });
+
+  datasets.custom = {
+    label: name, emoji:'\u2699\ufe0f',
+    rawTitle: name.toUpperCase().replace(/ /g,'_') + ' \u2014 your scenario',
+    rawColumns: colNames,
+    rawRows: [],
+    incidentTie: `<b>Heuristic model:</b> this proposed classification was inferred from naming conventions (key suffixes, measure words). Treat it as a starting hypothesis, not gospel \u2014 in a real modeling session you'd validate each guess against the business: "is this value stable and unique?" (Hub), "does it describe one entity and change over time?" (Satellite), "does it only exist for this combination?" (Link satellite).`,
+    dv: { hubs: hubNames, linkLabel: 'LINK: ' + name + ' \u2014 ties ' + hubNames.join(' + ') + ' together', columns: dvColumns }
+  };
+
+  status.style.display = 'block';
+  status.innerHTML = `Built <b>${name}</b>: ${colNames.length} columns, ${hubNames.length} inferred hub(s) (${hubNames.join(', ')}). Now classify below \u2014 or hit "Reveal the diagram" to see the inferred model. Star/Snowflake tabs will derive Fact/Dimension zones from the same inference.`;
+
+  currentDataset = 'custom';
+  resetPlacement();
+  renderTabs();
+  renderRawTable();
+  document.getElementById('incidentTie').innerHTML = datasets.custom.incidentTie;
+}
+
+// Star/Snowflake derivations for custom scenarios (built from DV inference)
+const ZONE_MAP_STAR = { hub:'fact', hubsat:'dimension', linksat:'fact' };
+function deriveStarColumns(dvColumns){
+  return dvColumns.map(c => ({
+    id: c.id,
+    zone: ZONE_MAP_STAR[c.zone],
+    entity: c.zone === 'hubsat' ? c.hub : undefined,
+    why: c.zone === 'hub' ? 'Key \u2014 sits on the Fact row as a foreign key.'
+       : c.zone === 'linksat' ? 'A measure \u2014 lives in the Fact table.'
+       : 'Descriptive attribute \u2014 flattened into Dim_' + (c.hub||'Entity').replace(/ /g,'_') + '.'
+  }));
+}
 
 function currentColumns(){
-  const dvCols = datasets[currentDataset].dv.columns;
+  const ds = datasets[currentDataset];
+  const dvCols = ds.dv.columns;
   if(currentMethodology === 'dv') return dvCols;
-  if(currentMethodology === 'star') return datasets[currentDataset].star.columns;
-  if(currentMethodology === 'snowflake') return datasets[currentDataset].snowflake.columns;
+  if(currentMethodology === 'star') return ds.star ? ds.star.columns : deriveStarColumns(dvCols);
+  if(currentMethodology === 'snowflake') return ds.snowflake ? ds.snowflake.columns : deriveStarColumns(dvCols);
   if(currentMethodology === 'threenf') return deriveColumns(dvCols, ZONE_MAP_3NF);
   if(currentMethodology === 'anchor') return deriveColumns(dvCols, ZONE_MAP_ANCHOR);
   if(currentMethodology === 'obt') return deriveColumns(dvCols, ZONE_MAP_OBT);
@@ -526,6 +642,14 @@ function renderTabs(){
     btn.onclick = ()=> switchDataset(key);
     tabs.appendChild(btn);
   });
+  // "New scenario" pseudo-tab
+  const addBtn = document.createElement('div');
+  addBtn.className = 'dstab' + (customPanelOpen ? ' active' : '');
+  addBtn.innerHTML = `<span class="emoji">\u2795</span>Your scenario`;
+  addBtn.onclick = ()=> toggleCustomPanel();
+  tabs.appendChild(addBtn);
+
+  document.getElementById('customPanel').style.display = customPanelOpen ? 'block' : 'none';
 
   const mtabs = document.getElementById('methTabs');
   mtabs.innerHTML = '';
@@ -561,6 +685,9 @@ function renderRawTable(){
   document.getElementById('rawTitle').textContent = d.rawTitle;
   const table = document.getElementById('rawTable');
   let html = '<tr>' + d.rawColumns.map(c=>`<th>${c}</th>`).join('') + '</tr>';
+  if(d.rawRows.length === 0){
+    html += `<tr><td colspan="${d.rawColumns.length}" style="color:var(--dim); font-family:'Inter',sans-serif;">No sample rows \u2014 custom scenario built from column names only.</td></tr>`;
+  }
   d.rawRows.forEach(row=>{
     html += '<tr>' + d.rawColumns.map(c=>`<td>${row[c]===''?'<span style="color:var(--dim)">\u2014</span>':row[c]}</td>`).join('') + '</tr>';
   });
