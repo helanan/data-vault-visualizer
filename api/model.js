@@ -2,6 +2,40 @@
 // Takes { description: string } and returns a proposed Data Vault model as JSON.
 // Requires ANTHROPIC_API_KEY set as an environment variable in Vercel.
 
+// ---- Rate limiting (in-memory, per warm lambda instance) ----
+// Not bulletproof across cold starts / multiple instances, but plenty to stop
+// casual abuse of a public endpoint without adding a database.
+const ipHits = new Map();          // ip -> [timestamps]
+let dailyCount = 0;
+let dailyReset = Date.now();
+
+const PER_IP_LIMIT = 5;            // requests per IP per window
+const PER_IP_WINDOW_MS = 60_000;   // 1 minute
+const DAILY_GLOBAL_LIMIT = 200;    // total requests per instance per day
+
+function rateLimited(ip) {
+  const now = Date.now();
+
+  // reset daily counter every 24h
+  if (now - dailyReset > 86_400_000) {
+    dailyCount = 0;
+    dailyReset = now;
+  }
+  if (dailyCount >= DAILY_GLOBAL_LIMIT) return 'The daily request limit for this demo has been reached. Try again tomorrow.';
+
+  const hits = (ipHits.get(ip) || []).filter(t => now - t < PER_IP_WINDOW_MS);
+  if (hits.length >= PER_IP_LIMIT) return 'Too many requests — wait a minute and try again.';
+
+  hits.push(now);
+  ipHits.set(ip, hits);
+  dailyCount++;
+
+  // keep the map from growing unbounded
+  if (ipHits.size > 5000) ipHits.clear();
+
+  return null;
+}
+
 export default async function handler(req, res) {
   // CORS + method handling
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -9,6 +43,10 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
+
+  const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket?.remoteAddress || 'unknown';
+  const limitMsg = rateLimited(ip);
+  if (limitMsg) return res.status(429).json({ error: limitMsg });
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
