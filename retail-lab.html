@@ -142,14 +142,30 @@
 
   <div class="panel" id="customPanel" style="display:none;">
     <div class="panel-title">Describe your scenario</div>
-    <div class="note" style="margin-top:0; margin-bottom:10px;">Paste your column names — comma-separated, one per line, or a CSV header row. Optionally give the scenario a name. The lab will infer a proposed model from naming conventions (things like <b>_id</b>, <b>amount</b>, <b>date</b>), build the zones, and let you classify against it in any methodology.</div>
-    <div style="margin-bottom:10px;">
-      <input type="text" id="scenarioName" placeholder="Scenario name (e.g. Gas Station Loyalty)" style="width:100%; background:var(--panel2); border:1px solid var(--edge); color:var(--text); padding:10px 12px; border-radius:8px; font-family:'Inter',sans-serif; font-size:14px;">
+    <div class="btnrow" style="margin-bottom:12px;">
+      <button class="ghost" id="modeColumns" onclick="setScenarioMode('columns')" style="border-color:var(--hash); color:var(--hash);">Paste columns</button>
+      <button class="ghost" id="modeAI" onclick="setScenarioMode('ai')">Describe in plain English (AI)</button>
     </div>
-    <textarea id="scenarioColumns" rows="4" placeholder="order_id, customer_id, customer_name, product_id, product_name, order_date, quantity, unit_price" style="width:100%; background:var(--panel2); border:1px solid var(--edge); color:var(--text); padding:10px 12px; border-radius:8px; font-family:'JetBrains Mono',monospace; font-size:13px; resize:vertical;"></textarea>
-    <div class="btnrow" style="margin-top:10px;">
-      <button class="primary" onclick="buildScenario()">▸ Build my scenario</button>
+
+    <div id="columnsMode">
+      <div class="note" style="margin-top:0; margin-bottom:10px;">Paste your column names — comma-separated, one per line, or a CSV header row. Optionally give the scenario a name. The lab will infer a proposed model from naming conventions (things like <b>_id</b>, <b>amount</b>, <b>date</b>), build the zones, and let you classify against it in any methodology.</div>
+      <div style="margin-bottom:10px;">
+        <input type="text" id="scenarioName" placeholder="Scenario name (e.g. Gas Station Loyalty)" style="width:100%; background:var(--panel2); border:1px solid var(--edge); color:var(--text); padding:10px 12px; border-radius:8px; font-family:'Inter',sans-serif; font-size:14px;">
+      </div>
+      <textarea id="scenarioColumns" rows="4" placeholder="order_id, customer_id, customer_name, product_id, product_name, order_date, quantity, unit_price" style="width:100%; background:var(--panel2); border:1px solid var(--edge); color:var(--text); padding:10px 12px; border-radius:8px; font-family:'JetBrains Mono',monospace; font-size:13px; resize:vertical;"></textarea>
+      <div class="btnrow" style="margin-top:10px;">
+        <button class="primary" onclick="buildScenario()">▸ Build my scenario</button>
+      </div>
     </div>
+
+    <div id="aiMode" style="display:none;">
+      <div class="note" style="margin-top:0; margin-bottom:10px;">Describe the business scenario in plain English — the AI will invent realistic columns, sample data, and a full proposed Data Vault model you can classify against in any methodology. <b>Requires the site owner's API key to be configured</b> (works on the Vercel deployment).</div>
+      <textarea id="scenarioDescription" rows="4" placeholder="A gas station loyalty program with members, fuel purchases, and reward redemptions" style="width:100%; background:var(--panel2); border:1px solid var(--edge); color:var(--text); padding:10px 12px; border-radius:8px; font-family:'Inter',sans-serif; font-size:14px; resize:vertical;"></textarea>
+      <div class="btnrow" style="margin-top:10px;">
+        <button class="primary" id="aiBuildBtn" onclick="buildScenarioAI()">▸ Model it with AI</button>
+      </div>
+    </div>
+
     <div class="note" id="scenarioStatus" style="display:none;"></div>
   </div>
 
@@ -521,6 +537,74 @@ let customPanelOpen = false;
 function toggleCustomPanel(){
   customPanelOpen = !customPanelOpen;
   renderTabs();
+}
+
+let scenarioMode = 'columns';
+function setScenarioMode(mode){
+  scenarioMode = mode;
+  document.getElementById('columnsMode').style.display = mode==='columns' ? 'block' : 'none';
+  document.getElementById('aiMode').style.display = mode==='ai' ? 'block' : 'none';
+  const cBtn = document.getElementById('modeColumns');
+  const aBtn = document.getElementById('modeAI');
+  cBtn.style.borderColor = mode==='columns' ? 'var(--hash)' : 'var(--edge)';
+  cBtn.style.color = mode==='columns' ? 'var(--hash)' : 'var(--text)';
+  aBtn.style.borderColor = mode==='ai' ? 'var(--hash)' : 'var(--edge)';
+  aBtn.style.color = mode==='ai' ? 'var(--hash)' : 'var(--text)';
+}
+
+async function buildScenarioAI(){
+  const desc = document.getElementById('scenarioDescription').value.trim();
+  const status = document.getElementById('scenarioStatus');
+  const btn = document.getElementById('aiBuildBtn');
+  status.style.display = 'block';
+
+  if(desc.length < 10){
+    status.innerHTML = 'Describe the scenario in a sentence or two first.';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = '\u23f3 Modeling\u2026';
+  status.innerHTML = 'Asking the model to design your scenario \u2014 usually takes a few seconds\u2026';
+
+  try {
+    const resp = await fetch('/api/model', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ description: desc })
+    });
+    const data = await resp.json();
+
+    if(!resp.ok){
+      status.innerHTML = '<b style="color:var(--bad);">Error:</b> ' + (data.error || 'Unknown error') +
+        (data.error && data.error.includes('not configured') ? '<br><br>The site owner needs to add ANTHROPIC_API_KEY in Vercel \u2192 Project \u2192 Settings \u2192 Environment Variables, then redeploy.' : '') +
+        (window.location.hostname.includes('github.io') ? '<br><br><b>Note:</b> AI mode only works on the Vercel deployment (github.io has no serverless functions). Try it at data-vault-visualizer.vercel.app.' : '');
+      return;
+    }
+
+    // Build the dataset from the AI response
+    const colIds = data.columns.map(c=>c.id);
+    datasets.custom = {
+      label: data.scenarioName, emoji: '\u2728',
+      rawTitle: data.scenarioName.toUpperCase().replace(/ /g,'_') + ' \u2014 AI-generated scenario',
+      rawColumns: colIds,
+      rawRows: Array.isArray(data.sampleRows) ? data.sampleRows : [],
+      incidentTie: `<b>AI-proposed model:</b> this classification was generated from your plain-English description. Treat it like a first-draft model from a colleague \u2014 solid starting point, but in a real modeling session you'd still pressure-test each choice against the business: "is this value stable and unique?" (Hub), "does it describe one entity and change over time?" (Satellite), "does it only exist for this combination?" (Link satellite).`,
+      dv: { hubs: data.hubs, linkLabel: data.linkLabel || ('LINK \u2014 ties ' + data.hubs.join(' + ') + ' together'), columns: data.columns }
+    };
+
+    status.innerHTML = `Built <b>${data.scenarioName}</b>: ${colIds.length} columns, ${data.hubs.length} hub(s) (${data.hubs.join(', ')}), with sample data. Classify below or reveal the diagram \u2014 all six methodology tabs work.`;
+    currentDataset = 'custom';
+    resetPlacement();
+    renderTabs();
+    renderRawTable();
+    document.getElementById('incidentTie').innerHTML = datasets.custom.incidentTie;
+  } catch(err){
+    status.innerHTML = '<b style="color:var(--bad);">Network error:</b> ' + String(err).slice(0,200);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '\u25b8 Model it with AI';
+  }
 }
 
 // ============ CUSTOM SCENARIO ENGINE ============
