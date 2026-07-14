@@ -129,20 +129,21 @@
 
   /* ---- Light theme ---- */
   [data-theme="light"]{
-    --bg: #f4f5f8;
-    --panel: #ffffff;
-    --panel2: #eef0f5;
-    --edge: #d8dce6;
-    --panel-edge: #d8dce6;
-    --hub: #b26a00;
-    --link: #0e7d62;
-    --sat: #c92e40;
-    --hash: #1f5fd0;
-    --text: #1a2030;
-    --dim: #5c6474;
-    --grid: #e7e9f0;
-    --good: #0e7d62;
-    --bad: #c92e40;
+    /* Soft Harmony palette: Pearl, Dune, Mist Blue, Eucalyptus, Mushroom, Slate */
+    --bg: #efe7de;            /* Pearl */
+    --panel: #f7f2ec;         /* lighter Pearl for cards */
+    --panel2: #e7dccf;        /* Dune-tinted surfaces */
+    --edge: #d7c7b8;          /* Dune */
+    --panel-edge: #d7c7b8;    /* Dune */
+    --hub: #7d6a5c;           /* deepened Mushroom */
+    --link: #5f7259;          /* deepened Eucalyptus */
+    --sat: #a05c4e;           /* warm clay, in-family with Mushroom */
+    --hash: #52708c;          /* deepened Mist Blue */
+    --text: #3e434a;          /* deepened Slate */
+    --dim: #8e7e73;           /* Mushroom */
+    --grid: #e6dcd1;          /* soft Dune grid lines */
+    --good: #5f7259;          /* deepened Eucalyptus */
+    --bad: #a05c4e;           /* warm clay */
   }
   [data-theme="light"] body, [data-theme="light"] input, [data-theme="light"] select, [data-theme="light"] textarea, [data-theme="light"] button{ color: var(--text); }
   .theme-toggle{
