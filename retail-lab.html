@@ -1218,5 +1218,202 @@ document.getElementById('incidentTie').innerHTML = datasets[currentDataset].inci
 })();
 </script>
 
+<!-- ═══════════ LAG DRILL ═══════════ -->
+<div class="wrap" id="lagDrill" style="margin-top:34px;">
+  <div class="eyebrow">Interview drill — the price lookback</div>
+  <h1 style="font-size:22px;">The Price Lookback <span>/ LAG looks back, LEAD looks ahead</span></h1>
+  <p class="sub">The question: "For each transaction, show the product's price from <b style="color:var(--hub);">the last time a transaction posted</b> — not yesterday, because products don't sell every day." Three steps: pick the tool, build the window, trace the result.</p>
+  <p style="font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--hash); margin-bottom:16px;">"Partition = the pile · order = the timeline · LAG glances at the row behind."</p>
+
+  <!-- step 1: pick the tool -->
+  <div class="panel" id="lagStep1">
+    <div class="panel-title">Step 1 — pick the tool</div>
+    <div style="font-size:15px; font-weight:700; margin-bottom:12px;">Previous <i>posted</i> price, with gaps between sale dates. What do you reach for?</div>
+    <div style="display:flex; flex-direction:column; gap:8px;">
+      <button class="chip" style="text-align:left;" data-lag="calendar">Self-join on transaction_date = yesterday</button>
+      <button class="chip" style="text-align:left;" data-lag="lead">LEAD(price) OVER (...)</button>
+      <button class="chip" style="text-align:left;" data-lag="lag">LAG(price) OVER (...)</button>
+    </div>
+    <div class="feedback" id="lagFb1" style="min-height:40px; margin-top:10px; font-weight:600; font-size:13.5px; color:var(--link);"></div>
+  </div>
+
+  <!-- step 2: build the window -->
+  <div class="panel" id="lagStep2" style="display:none;">
+    <div class="panel-title">Step 2 — build the window</div>
+    <div style="font-family:'JetBrains Mono',monospace; font-size:13px; line-height:2; background:var(--panel2); border:1px solid var(--edge); border-radius:10px; padding:12px 14px; margin-bottom:12px;">
+      LAG(price) OVER (<br>
+      &nbsp;&nbsp;PARTITION BY <span id="lagSlotP" style="border-bottom:2px dashed var(--hub); padding:0 8px; color:var(--hub);">???</span><br>
+      &nbsp;&nbsp;ORDER BY <span id="lagSlotO" style="border-bottom:2px dashed var(--hash); padding:0 8px; color:var(--hash);">???</span><br>
+      ) AS prev_price
+    </div>
+    <div style="font-size:13px; color:var(--dim); margin-bottom:8px;" id="lagStep2Hint">First: what's the pile? Tap the PARTITION BY column.</div>
+    <div class="pool" id="lagChips">
+      <div class="chip" data-col="product_id">product_id</div>
+      <div class="chip" data-col="transaction_date">transaction_date</div>
+      <div class="chip" data-col="price">price</div>
+      <div class="chip" data-col="store_id">store_id</div>
+    </div>
+    <div class="feedback" id="lagFb2" style="min-height:40px; margin-top:8px; font-weight:600; font-size:13.5px; color:var(--link);"></div>
+  </div>
+
+  <!-- step 3: trace it -->
+  <div class="panel" id="lagStep3" style="display:none;">
+    <div class="panel-title">Step 3 — trace it. Tap each row of PRD-88 to reveal prev_price.</div>
+    <div class="tblwrap">
+      <table style="min-width:480px;">
+        <tr><th>product_id</th><th>transaction_date</th><th>price</th><th>prev_price</th></tr>
+        <tbody id="lagRows"></tbody>
+      </table>
+    </div>
+    <div class="feedback" id="lagFb3" style="min-height:40px; margin-top:10px; font-weight:600; font-size:13.5px; color:var(--link);"></div>
+    <div id="lagNullQuiz" style="display:none; margin-top:8px;">
+      <div style="font-size:14px; font-weight:700; margin-bottom:8px;">The first row has nothing behind it. What does LAG return?</div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button class="chip" data-null="zero">0</button>
+        <button class="chip" data-null="same">The same price</button>
+        <button class="chip" data-null="null">NULL</button>
+      </div>
+      <div class="feedback" id="lagFbNull" style="min-height:24px; margin-top:8px; font-weight:600; font-size:13.5px; color:var(--link);"></div>
+    </div>
+  </div>
+
+  <!-- finale -->
+  <div class="panel" id="lagFinal" style="display:none;">
+    <div class="panel-title">Lock it in</div>
+    <p style="font-size:13.5px; line-height:1.7; margin-bottom:12px;">Calendar math fails because products don't sell every day — the gap between sales is the whole point. Window functions ignore the calendar and walk the <b style="color:var(--hub);">actual timeline of posted rows</b>. Same skeleton as the dedupe drill: one pile per product, ordered by time. Dedupe keeps the top card; <b style="color:var(--hub);">LAG glances at the card behind it.</b></p>
+    <div style="font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--dim); line-height:1.8; background:var(--panel2); border:1px solid var(--edge); border-radius:10px; padding:12px 14px;">
+      <span style="color:var(--dim);">-- eight words, forever:</span><br>
+      LAG looks back. LEAD looks ahead.<br>
+      Partition = pile. Order = timeline.<br><br>
+      <span style="color:var(--dim);">-- bonus flex if asked about the NULL:</span><br>
+      LAG(price, 1, price) <span style="color:var(--dim);">-- third arg = default instead of NULL</span>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  // step 1
+  const fb1 = document.getElementById('lagFb1');
+  document.querySelectorAll('#lagStep1 .chip').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      const v = b.dataset.lag;
+      if(v==='lag'){
+        b.style.borderColor='var(--good)';
+        fb1.innerHTML = '✓ LAG — to lag behind is to be in the past. It reads the previous row in the window, which is the last <i>posted</i> transaction, gaps and all.';
+        document.getElementById('lagStep2').style.display='block';
+        document.getElementById('lagStep2').scrollIntoView({behavior:'smooth'});
+      } else if(v==='lead'){
+        b.style.borderColor='var(--bad)'; b.style.opacity='0.6';
+        fb1.innerHTML = '<span style="color:var(--bad);">⚡ The interview mix-up, live. LEAD is out in front — it peeks at the NEXT row. You want the one behind you: to lag is to be in the past.</span>';
+      } else {
+        b.style.borderColor='var(--bad)'; b.style.opacity='0.6';
+        fb1.innerHTML = '<span style="color:var(--bad);">⚡ Calendar trap. PRD-88 sold on the 3rd and then the 9th — there is no "yesterday" row to join to. Products don\'t sell every day; that\'s the whole trick in the question.</span>';
+      }
+    });
+  });
+
+  // step 2
+  let phase = 'partition';
+  const fb2 = document.getElementById('lagFb2');
+  document.querySelectorAll('#lagChips .chip').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      const col = b.dataset.col;
+      if(phase==='partition'){
+        if(col==='product_id'){
+          document.getElementById('lagSlotP').textContent='product_id';
+          b.style.borderColor='var(--good)'; b.style.pointerEvents='none'; b.style.opacity='0.7';
+          fb2.innerHTML = '✓ One pile per product — a price history only makes sense inside a single product\'s lane.';
+          document.getElementById('lagStep2Hint').textContent = 'Now: what\'s the timeline? Tap the ORDER BY column.';
+          phase='order';
+        } else {
+          b.style.borderColor='var(--bad)';
+          setTimeout(()=>b.style.borderColor='var(--edge)', 450);
+          fb2.innerHTML = '<span style="color:var(--bad);">The pile is the thing whose history you\'re tracking. Whose price is it?</span>';
+        }
+      } else if(phase==='order'){
+        if(col==='transaction_date'){
+          document.getElementById('lagSlotO').textContent='transaction_date';
+          b.style.borderColor='var(--good)'; b.style.pointerEvents='none'; b.style.opacity='0.7';
+          fb2.innerHTML = '✓ The timeline is posting order. Window built — now trace what it produces.';
+          phase='done';
+          document.getElementById('lagStep3').style.display='block';
+          document.getElementById('lagStep3').scrollIntoView({behavior:'smooth'});
+        } else {
+          b.style.borderColor='var(--bad)';
+          setTimeout(()=>b.style.borderColor='var(--edge)', 450);
+          fb2.innerHTML = '<span style="color:var(--bad);">The timeline orders the rows in time. Which column is time?</span>';
+        }
+      }
+    });
+  });
+
+  // step 3
+  const ROWS = [
+    {date:'2026-06-03', price:'12.99', prev:null},
+    {date:'2026-06-09', price:'13.49', prev:'12.99'},
+    {date:'2026-06-21', price:'13.49', prev:'13.49'},
+    {date:'2026-07-02', price:'11.99', prev:'13.49'},
+  ];
+  const tbody = document.getElementById('lagRows');
+  const fb3 = document.getElementById('lagFb3');
+  let revealed = 0;
+  ROWS.forEach((r, i)=>{
+    const tr = document.createElement('tr');
+    tr.style.cursor='pointer';
+    tr.innerHTML = `<td>PRD-88</td><td>${r.date}</td><td>${r.price}</td><td class="prevCell" style="color:var(--dim);">tap</td>`;
+    tr.addEventListener('click', ()=>{
+      if(tr.dataset.done) return;
+      const cell = tr.querySelector('.prevCell');
+      if(i===0){
+        // hold the NULL reveal behind the mini-quiz
+        if(!tr.dataset.quizShown){
+          tr.dataset.quizShown='1';
+          document.getElementById('lagNullQuiz').style.display='block';
+          fb3.innerHTML = 'Careful with this one — answer the question below first.';
+          return;
+        }
+        return;
+      }
+      tr.dataset.done='1';
+      cell.textContent = r.prev;
+      cell.style.color='var(--hub)';
+      revealed++;
+      const gap = i===3 ? ' Notice the price DROP shows up cleanly — this is exactly how you\'d flag price changes between postings.' : '';
+      fb3.innerHTML = '✓ Previous posted row\'s price — '+(r.date)+' looks back past the calendar gap.'+gap;
+      checkDone();
+    });
+    tbody.appendChild(tr);
+  });
+
+  document.querySelectorAll('#lagNullQuiz .chip').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      const fbN = document.getElementById('lagFbNull');
+      if(b.dataset.null==='null'){
+        b.style.borderColor='var(--good)';
+        fbN.innerHTML = '✓ NULL — there is no row behind the first one. (LAG takes an optional third argument to default it.)';
+        const firstRow = tbody.querySelector('tr');
+        firstRow.dataset.done='1';
+        const cell = firstRow.querySelector('.prevCell');
+        cell.textContent='NULL';
+        cell.style.color='var(--sat)';
+        revealed++;
+        checkDone();
+      } else {
+        b.style.borderColor='var(--bad)'; b.style.opacity='0.6';
+        fbN.innerHTML = '<span style="color:var(--bad);">LAG doesn\'t invent data — no previous row means no value.</span>';
+      }
+    });
+  });
+
+  function checkDone(){
+    if(revealed===ROWS.length){
+      document.getElementById('lagFinal').style.display='block';
+      document.getElementById('lagFinal').scrollIntoView({behavior:'smooth'});
+    }
+  }
+})();
+</script>
+
 </body>
 </html>
