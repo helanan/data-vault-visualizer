@@ -1045,5 +1045,178 @@ renderRawTable();
 renderZonesContainer();
 document.getElementById('incidentTie').innerHTML = datasets[currentDataset].incidentTie;
 </script>
+<!-- ═══════════ KIMBALL DRILL ═══════════ -->
+<div class="wrap" id="kimballDrill" style="margin-top:34px;">
+  <div class="eyebrow">Interview drill — star schema under pressure</div>
+  <h1 style="font-size:22px;">The Kimball Drill <span>/ flat dimensions or buzzer</span></h1>
+  <p class="sub">You're asked to model retail sales <b style="color:var(--hub);">in Kimball</b>. Your vault instincts will scream "give category its own table!" — that's the trap. In a star schema, the dimension stays <b style="color:var(--hub);">wide and flat</b>. Sort every column. The snowflake zone is watching.</p>
+  <p style="font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--hash); margin-bottom:16px;">"Skinny fact, flat dimension. Kimball denormalizes for reading; the vault normalizes for integrating."</p>
+
+  <div class="panel">
+    <div class="panel-title">Columns to place</div>
+    <div class="pool" id="kdPool"></div>
+  </div>
+
+  <div class="zones z3" id="kdZones">
+    <div class="zone" data-kd="fact">
+      <div class="zone-head"><div class="zone-dot" style="background:var(--hash);"></div><div class="zone-title">FactSales</div></div>
+      <div class="zone-sub">Grain: one row per line item per transaction. Keys + measures only.</div>
+      <div class="zone-chips" id="kdz-fact"></div>
+    </div>
+    <div class="zone" data-kd="dim">
+      <div class="zone-head"><div class="zone-dot" style="background:var(--hub);"></div><div class="zone-title">DimProduct</div></div>
+      <div class="zone-sub">One wide, flat, human-readable table. Yes, ALL of it.</div>
+      <div class="zone-chips" id="kdz-dim"></div>
+    </div>
+    <div class="zone" data-kd="trap" style="border-color:rgba(255,107,122,0.35);">
+      <div class="zone-head"><div class="zone-dot" style="background:var(--sat);"></div><div class="zone-title">DimCategory <span style="color:var(--dim); font-weight:400;">(its own table?)</span></div></div>
+      <div class="zone-sub">A separate normalized table for category... tempting, isn't it?</div>
+      <div class="zone-chips" id="kdz-trap"></div>
+    </div>
+  </div>
+
+  <div class="feedback" id="kdFeedback" style="min-height:44px; font-weight:600; font-size:13.5px; color:var(--link); margin-bottom:6px;"></div>
+
+  <div class="panel" id="kdQuizPanel" style="display:none;">
+    <div class="panel-title">Quick-fire — say these out loud</div>
+    <div id="kdQuizBody"></div>
+  </div>
+
+  <div class="panel" id="kdFinal" style="display:none;">
+    <div class="panel-title">The philosophy answer</div>
+    <p style="font-size:13.5px; line-height:1.7; margin-bottom:12px;">Your instinct to give category its own table isn't wrong — it's <b style="color:var(--hub);">upstream thinking</b>. Auditability and point-in-time reconstruction are the <b style="color:var(--hub);">vault's</b> job. The star schema is rebuilt <i>from</i> the vault, so it doesn't carry that burden — it gets to be flat, fast, and friendly. The mart is disposable; the vault is the record.</p>
+    <div style="font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--dim); line-height:1.8; background:var(--panel2); border:1px solid var(--edge); border-radius:10px; padding:12px 14px;">
+      <span style="color:var(--dim);">-- the interview line:</span><br>
+      "My day job is Data Vault, so my instinct is to normalize.<br>
+      In a star schema I'd flatten category into DimProduct —<br>
+      Kimball optimizes for query simplicity, and storage is cheap.<br>
+      In practice: vault upstream for integration and audit,<br>
+      star schemas downstream for consumption."
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const KD_CHIPS = [
+    {id:'quantity',           zone:'fact', why:'A measure — it gets summed. Fact.'},
+    {id:'unit_price',         zone:'fact', why:'Measure. Fact.'},
+    {id:'discount_amount',    zone:'fact', why:'Measure. Fact.'},
+    {id:'transaction_number', zone:'fact', why:'No attributes of its own — a degenerate dimension. It rides on the fact row.'},
+    {id:'product_name',       zone:'dim',  why:'Descriptive. DimProduct.'},
+    {id:'brand',              zone:'dim',  why:'Descriptive. DimProduct.'},
+    {id:'category_name',      zone:'dim',  why:'THE trap column — and you kept it flat. Category is just a column in DimProduct.'},
+    {id:'subcategory_name',   zone:'dim',  why:'Also flat. Also DimProduct.'},
+    {id:'department',         zone:'dim',  why:'Flat. DimProduct. Sensing a theme?'},
+    {id:'product_size',       zone:'dim',  why:'Descriptive. DimProduct.'},
+  ];
+  const TRAP_MSGS = {
+    'category_name':'⚡ SNOWFLAKE ALERT. This is the exact move from the interview — category in its own table is textbook <b>snowflaking</b>. Correct in your vault, penalized in Kimball. It\'s a <b>column in DimProduct</b>. Storage is cheap; joins aren\'t.',
+    'subcategory_name':'⚡ Buzz. Subcategory too — flat, inside DimProduct. Your vault instincts are showing (affectionately).',
+    'default':'⚡ Buzz. Nothing goes in here. In Kimball this table shouldn\'t exist at all — that\'s the whole lesson. Everything descriptive about a product lives flat in DimProduct.'
+  };
+  const KD_QUIZ = [
+    {q:'What\'s the grain of FactSales?', opts:['One row per line item per transaction','One row per transaction','One row per product per day'], a:0},
+    {q:'A product\'s brand changes and you need history. In Kimball that\'s…', opts:['Update the row in place','SCD Type 2 — new row, effective dates','Move brand to its own table'], a:1},
+    {q:'transaction_number has no attributes of its own. It\'s a…', opts:['Junk dimension','Hub','Degenerate dimension'], a:2},
+    {q:'Why does Kimball keep category INSIDE DimProduct?', opts:['Storage efficiency','Fewer joins — simple, fast queries for analysts','Auditability'], a:1},
+    {q:'Auditability and point-in-time reconstruction belong in the…', opts:['Star schema','BI tool','Data Vault, upstream'], a:2},
+  ];
+
+  const pool = document.getElementById('kdPool');
+  const fb = document.getElementById('kdFeedback');
+  let selected = null;
+  let placed = 0;
+  const total = KD_CHIPS.length;
+
+  // shuffle chips for display
+  const shuffled = KD_CHIPS.slice().sort(()=>Math.random()-0.5);
+  shuffled.forEach(c=>{
+    const el = document.createElement('div');
+    el.className='chip';
+    el.textContent = c.id;
+    el.onclick = ()=>{
+      document.querySelectorAll('#kdPool .chip').forEach(x=>x.classList.remove('selected'));
+      el.classList.add('selected');
+      selected = {chip:c, el:el};
+      fb.innerHTML = 'Now tap the table where <b>'+c.id+'</b> belongs.';
+    };
+    pool.appendChild(el);
+  });
+
+  document.querySelectorAll('#kdZones .zone').forEach(zone=>{
+    zone.addEventListener('click', ()=>{
+      if(!selected) return;
+      const target = zone.dataset.kd;
+      const c = selected.chip;
+
+      if(target === 'trap'){
+        zone.style.borderColor = 'var(--bad)';
+        setTimeout(()=>zone.style.borderColor='rgba(255,107,122,0.35)', 600);
+        fb.innerHTML = '<span style="color:var(--bad);">' + (TRAP_MSGS[c.id] || TRAP_MSGS['default']) + '</span>';
+        return;
+      }
+      if(target === c.zone){
+        const chipEl = selected.el;
+        chipEl.classList.remove('selected');
+        chipEl.style.pointerEvents='none';
+        chipEl.style.opacity='0.85';
+        chipEl.style.borderColor = target==='fact' ? 'var(--hash)' : 'var(--hub)';
+        document.getElementById('kdz-'+target).appendChild(chipEl);
+        placed++;
+        fb.innerHTML = '✓ ' + c.why + (placed<total ? ' <span style="color:var(--dim);">('+(total-placed)+' left)</span>' : '');
+        selected = null;
+        if(placed===total){
+          fb.innerHTML = '✓ Star schema built — skinny fact, flat dimension, and the snowflake zone stayed <b>empty</b>. That empty table IS the answer. Quiz below.';
+          renderQuiz();
+        }
+      } else {
+        zone.style.borderColor = 'var(--bad)';
+        setTimeout(()=>zone.style.borderColor='var(--edge)', 500);
+        fb.innerHTML = '<span style="color:var(--bad);">Not there — think: is it summed (fact) or does it describe the product (dimension)?</span>';
+      }
+    });
+  });
+
+  function renderQuiz(){
+    const panel = document.getElementById('kdQuizPanel');
+    const body = document.getElementById('kdQuizBody');
+    panel.style.display='block';
+    let qi = 0;
+    function step(){
+      if(qi >= KD_QUIZ.length){
+        panel.style.display='none';
+        document.getElementById('kdFinal').style.display='block';
+        document.getElementById('kdFinal').scrollIntoView({behavior:'smooth'});
+        return;
+      }
+      const item = KD_QUIZ[qi];
+      body.innerHTML = '<div style="font-size:16px; font-weight:700; margin-bottom:12px;">'+item.q+'</div><div class="kd-opts" style="display:flex; flex-direction:column; gap:8px;"></div><div class="feedback" style="min-height:20px; margin-top:8px;"></div>';
+      const opts = body.querySelector('.kd-opts');
+      const qfb = body.querySelector('.feedback');
+      item.opts.forEach((o,i)=>{
+        const b = document.createElement('button');
+        b.className='chip';
+        b.style.textAlign='left';
+        b.textContent = o;
+        b.onclick = ()=>{
+          if(i===item.a){
+            b.style.borderColor='var(--good)';
+            qfb.textContent='✓';
+            setTimeout(()=>{ qi++; step(); }, 600);
+          } else {
+            b.style.borderColor='var(--bad)';
+            b.style.opacity='0.5';
+            qfb.textContent='Skinny fact, flat dimension.';
+          }
+        };
+        opts.appendChild(b);
+      });
+    }
+    step();
+  }
+})();
+</script>
+
 </body>
 </html>
