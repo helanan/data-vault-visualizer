@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+(function(){
+  const saved = localStorage.getItem('dv-theme');
+  if(saved === 'light') document.documentElement.setAttribute('data-theme','light');
+  window.toggleTheme = function(){
+    const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+    if(isLight){ document.documentElement.removeAttribute('data-theme'); localStorage.setItem('dv-theme','dark'); }
+    else { document.documentElement.setAttribute('data-theme','light'); localStorage.setItem('dv-theme','light'); }
+    const btn = document.querySelector('.theme-toggle');
+    if(btn) btn.textContent = document.documentElement.getAttribute('data-theme')==='light' ? '\u263e dark' : '\u2600 light';
+  };
+  document.addEventListener('DOMContentLoaded', function(){
+    const nav = document.querySelector('.nav');
+    if(nav){
+      const btn = document.createElement('button');
+      btn.className = 'theme-toggle';
+      btn.textContent = document.documentElement.getAttribute('data-theme')==='light' ? '\u263e dark' : '\u2600 light';
+      btn.onclick = window.toggleTheme;
+      nav.appendChild(btn);
+    }
+  });
+})();
+</script>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dedupe — Same Pattern, Any Costume</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Inter:wght@400;500;600;700;800&display=swap');
+
+  :root{
+    --bg:#0b0e14; --panel:#12161f; --panel2:#161c28; --edge:#1e2430;
+    --hub:#ffb454; --link:#7ee3c9; --sat:#ff6b7a; --hash:#6fa8ff;
+    --text:#e8ecf4; --dim:#7c8598; --grid:#1a2030; --good:#7ee3c9; --bad:#ff6b7a;
+  }
+  [data-theme="light"]{
+    --bg: #efe7de; --panel: #f7f2ec; --panel2: #e7dccf; --edge: #d7c7b8;
+    --hub: #7d6a5c; --link: #5f7259; --sat: #a05c4e; --hash: #52708c;
+    --text: #3e434a; --dim: #8e7e73; --grid: #e6dcd1; --good: #5f7259; --bad: #a05c4e;
+  }
+  [data-theme="light"] body, [data-theme="light"] button{ color: var(--text); }
+
+  *{box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent;}
+  body{
+    background:
+      linear-gradient(var(--grid) 1px, transparent 1px) 0 0/100% 44px,
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px) 0 0/44px 100%,
+      var(--bg);
+    color:var(--text); font-family:'Inter',sans-serif; padding:24px 14px 70px; line-height:1.5;
+  }
+  .wrap{ max-width:760px; margin:0 auto; }
+
+  .nav{ display:flex; gap:8px; margin-bottom:20px; flex-wrap:wrap; }
+  .nav a{
+    font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:0.5px;
+    color:var(--dim); text-decoration:none; padding:6px 10px; border:1px solid var(--edge); border-radius:7px;
+  }
+  .nav a.active{ color:var(--hash); border-color:rgba(111,168,255,0.4); background:rgba(111,168,255,0.08); }
+  .theme-toggle{
+    font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:0.5px;
+    color:var(--dim); background:transparent; padding:6px 10px; border:1px solid var(--edge);
+    border-radius:7px; cursor:pointer; margin-left:auto;
+  }
+
+  .eyebrow{ font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:2px; color:var(--dim); text-transform:uppercase; margin-bottom:8px;}
+  h1{ font-size:26px; font-weight:800; letter-spacing:-0.02em; margin-bottom:6px;}
+  h1 span{ color:var(--dim); font-weight:500;}
+  .sub{ color:var(--dim); font-size:13.5px; margin-bottom:16px; max-width:60ch;}
+
+  .scenarios{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; }
+  .scn{
+    font-family:'JetBrains Mono',monospace; font-size:11.5px; letter-spacing:0.5px;
+    color:var(--dim); background:transparent; padding:7px 12px;
+    border:1px solid var(--edge); border-radius:8px; cursor:pointer;
+  }
+  .scn.active{ color:#0b0e14; background:var(--hub); border-color:var(--hub); font-weight:700; }
+  [data-theme="light"] .scn.active{ color:#ffffff; }
+
+  .mantra-line{ font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--hash); margin-bottom:18px; }
+
+  .dots{display:flex; gap:8px; margin-bottom:18px;}
+  .dot{width:9px; height:9px; border-radius:50%; background:var(--edge); transition:all .25s;}
+  .dot.on{background:var(--hash); transform:scale(1.25);}
+  .dot.done{background:var(--hub);}
+
+  .stage{display:none;}
+  .stage.active{display:block; animation:fadeUp .35s ease;}
+  @keyframes fadeUp{from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:none;}}
+
+  .panel{ background:var(--panel); border:1px solid var(--edge); border-radius:14px; padding:18px; margin-bottom:16px;}
+  .panel b{ color:var(--hub); }
+  .hook{ font-family:'JetBrains Mono',monospace; font-size:12.5px; color:var(--link); display:block; margin-top:8px; }
+
+  .grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(150px,1fr)); gap:12px; margin-bottom:14px;}
+  .pile{
+    background:var(--panel); border:1px solid var(--edge); border-radius:14px;
+    padding:14px 10px; text-align:center; cursor:pointer; position:relative;
+    transition:transform .12s, box-shadow .12s, border-color .12s;
+  }
+  .pile:active{transform:scale(.97);}
+  .pile .stack{position:relative; height:76px; margin:0 auto 8px; width:64px;}
+  .pcard{
+    position:absolute; left:0; width:56px; height:70px; border-radius:7px;
+    background:var(--panel2); border:1px solid var(--edge);
+    display:flex; align-items:center; justify-content:center;
+    font-size:24px;
+  }
+  .pcard.txt{ font-family:'JetBrains Mono',monospace; font-weight:800; font-size:16px; }
+  .red{ color:var(--sat); }
+  .pile .plabel{ font-weight:700; font-size:13.5px; margin-bottom:2px; }
+  .pile .count{ font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--dim); }
+  .pile.right{border-color:var(--hub); box-shadow:0 0 0 3px rgba(255,180,84,0.18);}
+  .pile.wrong{border-color:var(--bad); animation:shake .3s;}
+  @keyframes shake{25%{transform:translateX(-4px);}75%{transform:translateX(4px);}}
+  .badge{
+    position:absolute; top:-9px; right:-6px; background:var(--hub); color:#0b0e14;
+    font-size:10px; font-weight:800; font-family:'JetBrains Mono',monospace;
+    border-radius:999px; padding:3px 8px; display:none;
+  }
+  [data-theme="light"] .badge{ color:#ffffff; }
+  .pile.right .badge{display:block;}
+
+  .group{margin-bottom:16px;}
+  .group h3{ font-family:'JetBrains Mono',monospace; font-size:12px; letter-spacing:1.5px; text-transform:uppercase; color:var(--dim); margin-bottom:8px;}
+  .rows{display:flex; flex-direction:column; gap:8px;}
+  .row{
+    background:var(--panel); border:1px solid var(--edge); border-radius:12px;
+    padding:11px 14px; display:flex; justify-content:space-between; align-items:center;
+    cursor:pointer; transition:all .15s; font-size:14px; gap:10px;
+  }
+  .row .meta{font-family:'JetBrains Mono',monospace; font-size:11.5px; color:var(--dim); white-space:nowrap;}
+  .row.right{border-color:var(--good); background:rgba(126,227,201,0.08);}
+  .row.right .tag{display:inline-block;}
+  .row.wrong{border-color:var(--bad); animation:shake .3s;}
+  .row.dimmed{opacity:.4;}
+  .row.tossed{opacity:.3; text-decoration:line-through;}
+  .tag{
+    display:none; font-family:'JetBrains Mono',monospace; font-size:10px;
+    background:var(--good); color:#0b0e14; border-radius:6px; padding:2px 6px; margin-left:8px;
+  }
+  .rn{
+    font-family:'JetBrains Mono',monospace; font-weight:700; font-size:11px;
+    background:var(--panel2); color:var(--hash); border:1px solid var(--edge);
+    border-radius:6px; padding:2px 7px; margin-right:6px;
+  }
+
+  .sql{
+    font-family:'JetBrains Mono',monospace; font-size:12.5px; line-height:1.7;
+    background:var(--panel2); border:1px solid var(--edge); color:var(--text);
+    border-radius:12px; padding:14px 16px; margin-top:14px; white-space:pre-wrap; display:none;
+  }
+  .sql.show{display:block; animation:fadeUp .3s ease;}
+  .sql .c{color:var(--dim);}
+  .sql .k{color:var(--hash); font-weight:700;}
+  .sql .v{color:var(--hub);}
+
+  .btn{
+    display:block; width:100%; margin-top:16px;
+    background:var(--hash); color:#0b0e14; border:none; border-radius:12px;
+    font-family:'Inter',sans-serif; font-weight:800; font-size:14px;
+    padding:13px; cursor:pointer; transition:opacity .15s;
+  }
+  [data-theme="light"] .btn{ color:#ffffff; }
+  .btn:disabled{opacity:.3;}
+  .btn.ghost{background:transparent; color:var(--hash); border:1px solid var(--hash);}
+
+  .feedback{min-height:22px; font-weight:600; font-size:13.5px; margin-top:10px; color:var(--link);}
+
+  .qcard .q{ font-size:17px; font-weight:700; margin-bottom:12px;}
+  .opts{display:flex; flex-direction:column; gap:8px;}
+  .opt{
+    text-align:left; background:var(--panel2); border:1px solid var(--edge);
+    border-radius:10px; padding:11px 13px; cursor:pointer;
+    font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--text);
+  }
+  .opt.right{border-color:var(--good); background:rgba(126,227,201,0.1);}
+  .opt.wrong{border-color:var(--bad); opacity:.5;}
+
+  .final{text-align:center; padding:10px;}
+  .final h2{font-size:22px; font-weight:800; margin-bottom:10px;}
+  .mantra{
+    font-family:'JetBrains Mono',monospace; font-size:15px; color:var(--link);
+    background:var(--panel); border:1px dashed var(--hub); border-radius:14px;
+    padding:18px 14px; margin:16px 0; line-height:1.7;
+  }
+  .translate{
+    font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--dim);
+    line-height:1.8; text-align:left;
+  }
+  .translate .k{ color:var(--hash); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="nav">
+    <a href="index.html">Reference card</a>
+    <a href="simulator.html">Data Vault simulator</a>
+    <a href="hashing.html">Hashing lab</a>
+    <a href="retail-lab.html">Modeling lab</a>
+    <a href="dedupe.html" class="active">Dedupe game</a>
+  </div>
+
+  <div class="eyebrow">Interview drill — window functions</div>
+  <h1>Dedupe <span>/ same pattern, any costume</span></h1>
+  <p class="sub">ROW_NUMBER dedupe never changes — only the nouns do. Play it in four different worlds until the pattern is muscle memory: <b style="color:var(--hub)">what's the pile, what's "newest", keep the top.</b></p>
+
+  <div class="scenarios" id="scnTabs"></div>
+  <p class="mantra-line" id="mantraLine"></p>
+
+  <div class="dots">
+    <div class="dot on"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div>
+  </div>
+
+  <!-- STAGE 1 -->
+  <div class="stage active" id="s0">
+    <div class="panel" id="p0"></div>
+    <div class="grid" id="pileGrid"></div>
+    <div class="feedback" id="f0"></div>
+    <div class="sql" id="sql0"></div>
+    <button class="btn" id="b0" disabled onclick="go(1)">Next: sort the piles →</button>
+  </div>
+
+  <!-- STAGE 2 -->
+  <div class="stage" id="s1">
+    <div class="panel" id="p1"></div>
+    <div id="sortArea"></div>
+    <div class="feedback" id="f1"></div>
+    <div class="sql" id="sql1"></div>
+    <button class="btn" id="b1" disabled onclick="go(2)">Next: keep the top →</button>
+  </div>
+
+  <!-- STAGE 3 -->
+  <div class="stage" id="s2">
+    <div class="panel" id="p2"></div>
+    <div class="rows" id="keepArea"></div>
+    <div class="feedback" id="f2"></div>
+    <div class="sql" id="sql2"></div>
+    <button class="btn" id="b2" disabled onclick="go(3)">Final: quick-fire quiz →</button>
+  </div>
+
+  <!-- STAGE 4 -->
+  <div class="stage" id="s3">
+    <div id="quizArea"></div>
+    <div class="final" id="finalArea" style="display:none;">
+      <h2 id="finalHead"></h2>
+      <div class="mantra" id="finalMantra"></div>
+      <div class="panel translate">
+        <span class="c">-- interview translation, in your world:</span><br>
+        <span class="k">PARTITION BY</span> claim_id&nbsp;&nbsp;<span class="c">-- the piles</span><br>
+        <span class="k">ORDER BY</span> ldts <span class="k">DESC</span>&nbsp;&nbsp;&nbsp;&nbsp;<span class="c">-- newest on top</span><br>
+        <span class="k">QUALIFY</span> rn = 1&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="c">-- keep the winner</span><br>
+        <span class="c">-- and "more than one" = GROUP BY / HAVING</span>
+      </div>
+      <button class="btn ghost" onclick="resetGame(current)">Replay this scenario</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+// SCENARIOS — same engine, different nouns.
+// key = the pile column · date = the "newest" column
+// ══════════════════════════════════════════════════════════════
+const SCENARIOS = {
+
+  cards: {
+    tab:'🃏 Cards', thing:'card', key:'card_id', date:'print_year',
+    mantra:'"One pile per card · newest print on top · keep the top card."',
+    s1prompt:'Two decks got shuffled together. Some cards now appear more than once. <b>Tap every card with duplicate copies.</b>',
+    s1hook:'"Any card with more than one copy."',
+    s2prompt:'Each duplicated card gets <b>one pile</b>. Every copy has a print year. <b>Tap the newest print in each pile.</b>',
+    s2hook:'"One pile per card, newest print on top."',
+    s3prompt:'The piles are numbered. <b>Tap only the cards that make the clean deck.</b>',
+    s3hook:'"Keep the top card."',
+    finalHead:'Clean deck. ♠',
+    piles:[
+      {label:'Queen of Hearts', glyph:'Q♥', red:true, copies:3},
+      {label:'King of Spades', glyph:'K♠', copies:1},
+      {label:'Seven of Diamonds', glyph:'7♦', red:true, copies:2},
+      {label:'Ace of Clubs', glyph:'A♣', copies:1},
+      {label:'Jack of Spades', glyph:'J♠', copies:2},
+      {label:'Three of Hearts', glyph:'3♥', red:true, copies:1},
+    ],
+    sorts:[
+      {name:'Q♥ pile', rows:[
+        {label:'Q♥ · worn edges', meta:'2019'},
+        {label:'Q♥ · crisp', meta:'2023', newest:true},
+        {label:'Q♥ · dog-eared', meta:'2016'},
+      ]},
+      {name:'7♦ pile', rows:[
+        {label:'7♦ · shrink wrap', meta:'2024', newest:true},
+        {label:'7♦ · coffee stain', meta:'2018'},
+      ]},
+      {name:'J♠ pile', rows:[
+        {label:'J♠ · slightly bent', meta:'2020'},
+        {label:'J♠ · crisp', meta:'2022', newest:true},
+      ]},
+    ],
+    keeps:[
+      {rn:1, keep:true,  label:'Q♥ · 2023 print'},
+      {rn:2, keep:false, label:'Q♥ · 2019 print'},
+      {rn:3, keep:false, label:'Q♥ · 2016 print'},
+      {rn:1, keep:true,  label:'7♦ · 2024 print'},
+      {rn:2, keep:false, label:'7♦ · 2018 print'},
+      {rn:1, keep:true,  label:'J♠ · 2022 print'},
+      {rn:2, keep:false, label:'J♠ · 2020 print'},
+    ],
+  },
+
+  closet: {
+    tab:'👕 Closet', thing:'item', key:'item_id', date:'purchase_date',
+    mantra:'"One bin per item · newest purchase on top · keep the top hanger."',
+    s1prompt:'Closet cleanout. Somehow you own multiples of the exact same piece. <b>Tap everything you own more than one of.</b>',
+    s1hook:'"Anything with more than one copy."',
+    s2prompt:'One bin per duplicated item. <b>Tap the most recent purchase in each bin</b> — that\'s the keeper.',
+    s2hook:'"One bin per item, newest on top."',
+    s3prompt:'Bins are numbered. <b>Tap what stays in the closet.</b> The rest goes to donation.',
+    s3hook:'"Keep the top hanger."',
+    finalHead:'Closet: organized. 🧺',
+    piles:[
+      {label:'Black tee', glyph:'👕', copies:3},
+      {label:'Denim jacket', glyph:'🧥', copies:1},
+      {label:'White sneakers', glyph:'👟', copies:2},
+      {label:'Sundress', glyph:'👗', copies:1},
+      {label:'Flannel shirt', glyph:'🧶', copies:2},
+      {label:'Rain boots', glyph:'🥾', copies:1},
+    ],
+    sorts:[
+      {name:'Black tee bin', rows:[
+        {label:'Black tee · crisp', meta:'2024', newest:true},
+        {label:'Black tee · faded', meta:'2021'},
+        {label:'Black tee · mystery stain', meta:'2019'},
+      ]},
+      {name:'Sneakers bin', rows:[
+        {label:'Sneakers · still boxed', meta:'2025', newest:true},
+        {label:'Sneakers · scuffed', meta:'2022'},
+      ]},
+      {name:'Flannel bin', rows:[
+        {label:'Flannel · soft', meta:'2023', newest:true},
+        {label:'Flannel · pilled', meta:'2020'},
+      ]},
+    ],
+    keeps:[
+      {rn:1, keep:true,  label:'Black tee · 2024'},
+      {rn:2, keep:false, label:'Black tee · 2021'},
+      {rn:3, keep:false, label:'Black tee · 2019'},
+      {rn:1, keep:true,  label:'Sneakers · 2025'},
+      {rn:2, keep:false, label:'Sneakers · 2022'},
+      {rn:1, keep:true,  label:'Flannel · 2023'},
+      {rn:2, keep:false, label:'Flannel · 2020'},
+    ],
+  },
+
+  customers: {
+    tab:'👤 Customers', thing:'customer', key:'customer_id', date:'updated_at',
+    mantra:'"One folder per customer · latest update on top · keep the freshest record."',
+    s1prompt:'The CRM has the same customer entered multiple times. <b>Tap every customer with duplicate records.</b>',
+    s1hook:'"Any customer with more than one record."',
+    s2prompt:'One folder per duplicated customer. <b>Tap the most recently updated record in each folder.</b>',
+    s2hook:'"One folder per customer, latest update on top."',
+    s3prompt:'Records are ranked. <b>Tap what survives into the golden record.</b>',
+    s3hook:'"Keep the freshest record."',
+    finalHead:'Golden records only. ✦',
+    piles:[
+      {label:'M. Garcia', glyph:'👤', copies:3},
+      {label:'T. Chen', glyph:'👤', copies:1},
+      {label:'R. Okafor', glyph:'👤', copies:2},
+      {label:'L. Novak', glyph:'👤', copies:1},
+      {label:'S. Reyes', glyph:'👤', copies:2},
+      {label:'D. Patel', glyph:'👤', copies:1},
+    ],
+    sorts:[
+      {name:'M. Garcia folder', rows:[
+        {label:'Garcia · new email', meta:'Jun 2026', newest:true},
+        {label:'Garcia · old address', meta:'Mar 2024'},
+        {label:'Garcia · original entry', meta:'Jan 2022'},
+      ]},
+      {name:'R. Okafor folder', rows:[
+        {label:'Okafor · phone updated', meta:'May 2026', newest:true},
+        {label:'Okafor · original entry', meta:'Feb 2023'},
+      ]},
+      {name:'S. Reyes folder', rows:[
+        {label:'Reyes · moved to Media, PA', meta:'Apr 2026', newest:true},
+        {label:'Reyes · original entry', meta:'Nov 2024'},
+      ]},
+    ],
+    keeps:[
+      {rn:1, keep:true,  label:'Garcia · Jun 2026'},
+      {rn:2, keep:false, label:'Garcia · Mar 2024'},
+      {rn:3, keep:false, label:'Garcia · Jan 2022'},
+      {rn:1, keep:true,  label:'Okafor · May 2026'},
+      {rn:2, keep:false, label:'Okafor · Feb 2023'},
+      {rn:1, keep:true,  label:'Reyes · Apr 2026'},
+      {rn:2, keep:false, label:'Reyes · Nov 2024'},
+    ],
+  },
+
+  financial: {
+    tab:'💵 Financial', thing:'payment', key:'payment_id', date:'file_date',
+    mantra:'"One pile per payment · latest file date on top · one clean ledger."',
+    s1prompt:'A remittance file got re-sent and some payments posted twice. <b>Tap every payment that appears more than once.</b>',
+    s1hook:'"Any payment with more than one posting."',
+    s2prompt:'One pile per duplicated payment. <b>Tap the posting with the latest FILE_DATE in each pile.</b> (Sound familiar?)',
+    s2hook:'"One pile per payment, latest file on top."',
+    s3prompt:'Postings are ranked. <b>Tap what stays in the ledger.</b> Duplicates get reversed.',
+    s3hook:'"One clean ledger."',
+    finalHead:'Ledger balanced. 💵',
+    piles:[
+      {label:'PMT-1042', glyph:'💵', copies:2},
+      {label:'PMT-2210', glyph:'💵', copies:1},
+      {label:'PMT-3387', glyph:'💵', copies:3},
+      {label:'PMT-4501', glyph:'💵', copies:1},
+      {label:'PMT-5623', glyph:'💵', copies:2},
+      {label:'PMT-6001', glyph:'💵', copies:1},
+    ],
+    sorts:[
+      {name:'PMT-1042 pile', rows:[
+        {label:'1042 · re-sent file', meta:'2026-06-14', newest:true},
+        {label:'1042 · original file', meta:'2026-06-12'},
+      ]},
+      {name:'PMT-3387 pile', rows:[
+        {label:'3387 · original file', meta:'2026-05-02'},
+        {label:'3387 · corrected file', meta:'2026-05-09'},
+        {label:'3387 · final re-send', meta:'2026-05-11', newest:true},
+      ]},
+      {name:'PMT-5623 pile', rows:[
+        {label:'5623 · re-sent file', meta:'2026-06-20', newest:true},
+        {label:'5623 · original file', meta:'2026-06-18'},
+      ]},
+    ],
+    keeps:[
+      {rn:1, keep:true,  label:'PMT-1042 · 2026-06-14'},
+      {rn:2, keep:false, label:'PMT-1042 · 2026-06-12'},
+      {rn:1, keep:true,  label:'PMT-3387 · 2026-05-11'},
+      {rn:2, keep:false, label:'PMT-3387 · 2026-05-09'},
+      {rn:3, keep:false, label:'PMT-3387 · 2026-05-02'},
+      {rn:1, keep:true,  label:'PMT-5623 · 2026-06-20'},
+      {rn:2, keep:false, label:'PMT-5623 · 2026-06-18'},
+    ],
+  },
+};
+
+// quiz builds itself from the scenario's column names
+function buildQuiz(s){
+  return [
+    {q:`"One pile per ${s.thing}" is…`,
+     opts:[`PARTITION BY ${s.key}`, `GROUP BY ${s.key}`, `ORDER BY ${s.key}`], a:0},
+    {q:'"Newest on top" is…',
+     opts:[`ORDER BY ${s.date} ASC`, `ORDER BY ${s.date} DESC`, `HAVING MAX(${s.date})`], a:1},
+    {q:'"Keep the top one" is…',
+     opts:['WHERE COUNT(*) = 1', 'LIMIT 1', 'QUALIFY rn = 1'], a:2},
+    {q:`"More than one per ${s.thing}" is…`,
+     opts:[`GROUP BY ${s.key} HAVING COUNT(*) > 1`, `PARTITION BY ${s.key}`, 'QUALIFY rn > 1'], a:0},
+    {q:'In a satellite load, "newest on top" becomes…',
+     opts:['ORDER BY ldts DESC', 'ORDER BY hashdiff', 'GROUP BY hub_key'], a:0},
+  ];
+}
+
+// ══════════════════════ ENGINE ══════════════════════
+let current = 'cards';
+
+function go(n){
+  document.querySelectorAll('.stage').forEach((s,i)=>s.classList.toggle('active', i===n));
+  document.querySelectorAll('.dot').forEach((d,i)=>{
+    d.classList.toggle('on', i===n);
+    d.classList.toggle('done', i<n);
+  });
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+function sqlBlock(el, html){ el.innerHTML = html; el.classList.remove('show'); }
+
+function resetGame(id){
+  current = id;
+  const s = SCENARIOS[id];
+
+  document.querySelectorAll('.scn').forEach(b=>b.classList.toggle('active', b.dataset.id===id));
+  document.getElementById('mantraLine').textContent = s.mantra;
+
+  // prompts
+  document.getElementById('p0').innerHTML = `${s.s1prompt}<span class="hook">${s.s1hook}</span>`;
+  document.getElementById('p1').innerHTML = `${s.s2prompt}<span class="hook">${s.s2hook}</span>`;
+  document.getElementById('p2').innerHTML = `${s.s3prompt}<span class="hook">${s.s3hook}</span>`;
+
+  // sql reveals
+  sqlBlock(document.getElementById('sql0'),
+`<span class="c">-- finding the duplicates: headcount at the door</span>
+<span class="k">SELECT</span> ${s.key}, <span class="k">COUNT</span>(*)
+<span class="k">FROM</span> source
+<span class="k">GROUP BY</span> <span class="v">${s.key}</span>
+<span class="k">HAVING COUNT</span>(*) <span class="v">&gt; 1</span>;`);
+  sqlBlock(document.getElementById('sql1'),
+`<span class="c">-- one pile per ${s.thing}, newest on top</span>
+<span class="k">ROW_NUMBER() OVER</span> (
+  <span class="k">PARTITION BY</span> <span class="v">${s.key}</span>
+  <span class="k">ORDER BY</span> <span class="v">${s.date} DESC</span>
+) <span class="k">AS</span> rn`);
+  sqlBlock(document.getElementById('sql2'),
+`<span class="c">-- keep the top one (Snowflake's clean way)</span>
+<span class="k">QUALIFY</span> rn = <span class="v">1</span>`);
+
+  // clear + rebuild stages
+  ['f0','f1','f2'].forEach(id=>document.getElementById(id).textContent='');
+  ['b0','b1','b2'].forEach(id=>document.getElementById(id).disabled=true);
+
+  buildStage1(s); buildStage2(s); buildStage3(s); buildStage4(s);
+  document.getElementById('finalArea').style.display='none';
+  document.getElementById('quizArea').style.display='block';
+  document.getElementById('finalHead').textContent = s.finalHead;
+  document.getElementById('finalMantra').innerHTML = s.mantra.replace(/ · /g,'<br>');
+  go(0);
+}
+
+function buildStage1(s){
+  const grid = document.getElementById('pileGrid');
+  grid.innerHTML='';
+  let found = 0;
+  const totalDupes = s.piles.filter(p=>p.copies>1).length;
+
+  s.piles.forEach(p=>{
+    const el = document.createElement('div');
+    el.className='pile';
+    const isTxt = /[♥♦♠♣]/.test(p.glyph);
+    let stack = '<div class="stack">';
+    for(let i=0;i<p.copies;i++){
+      stack += `<div class="pcard ${isTxt?'txt':''} ${p.red?'red':''}" style="top:${i*4}px; transform:translateX(${i*7}px) rotate(${(i-1)*4}deg)">${p.glyph}</div>`;
+    }
+    stack += '</div>';
+    el.innerHTML = `<div class="badge">×${p.copies}</div>${stack}<div class="plabel">${p.label}</div><div class="count">tap to check</div>`;
+    el.onclick = ()=>{
+      if(el.dataset.done) return;
+      if(p.copies>1){
+        el.dataset.done='1'; el.classList.add('right'); found++;
+        document.getElementById('f0').textContent =
+          found===totalDupes ? 'All duplicates flagged. That headcount is GROUP BY + HAVING.' :
+          `Flagged. ${totalDupes-found} more hiding.`;
+        if(found===totalDupes){
+          document.getElementById('sql0').classList.add('show');
+          document.getElementById('b0').disabled=false;
+        }
+      } else {
+        el.classList.add('wrong');
+        document.getElementById('f0').textContent='Only one of those — it\'s clean.';
+        setTimeout(()=>el.classList.remove('wrong'), 400);
+      }
+    };
+    grid.appendChild(el);
+  });
+}
+
+function buildStage2(s){
+  const sortArea = document.getElementById('sortArea');
+  sortArea.innerHTML='';
+  let sorted = 0;
+
+  s.sorts.forEach(p=>{
+    const box = document.createElement('div');
+    box.className='group';
+    box.innerHTML = `<h3>${p.name}</h3>`;
+    const rows = document.createElement('div'); rows.className='rows';
+    p.rows.forEach(c=>{
+      const el = document.createElement('div');
+      el.className='row';
+      el.innerHTML = `<span>${c.label}<span class="tag">TOP OF PILE</span></span><span class="meta">${c.meta}</span>`;
+      el.onclick = ()=>{
+        if(box.dataset.done) return;
+        if(c.newest){
+          box.dataset.done='1'; el.classList.add('right');
+          rows.querySelectorAll('.row').forEach(r=>{ if(r!==el) r.classList.add('dimmed'); });
+          sorted++;
+          document.getElementById('f1').textContent =
+            sorted===s.sorts.length ? 'Every pile sorted, newest on top. PARTITION BY + ORDER BY DESC.' :
+            'Newest on top ✓';
+          if(sorted===s.sorts.length){
+            document.getElementById('sql1').classList.add('show');
+            document.getElementById('b1').disabled=false;
+          }
+        } else {
+          el.classList.add('wrong');
+          document.getElementById('f1').textContent='There\'s a fresher one in this pile — check the dates.';
+          setTimeout(()=>el.classList.remove('wrong'), 400);
+        }
+      };
+      rows.appendChild(el);
+    });
+    box.appendChild(rows);
+    sortArea.appendChild(box);
+  });
+}
+
+function buildStage3(s){
+  const keepArea = document.getElementById('keepArea');
+  keepArea.innerHTML='';
+  let kept = 0;
+  const totalKeep = s.keeps.filter(c=>c.keep).length;
+
+  s.keeps.forEach(c=>{
+    const el = document.createElement('div');
+    el.className='row';
+    el.innerHTML = `<span><span class="rn">rn ${c.rn}</span>${c.label}</span>`;
+    el.onclick = ()=>{
+      if(el.dataset.done) return;
+      el.dataset.done='1';
+      if(c.keep){
+        el.classList.add('right'); kept++;
+        document.getElementById('f2').textContent =
+          kept===totalKeep ? 'Only rn = 1 survives. QUALIFY rn = 1.' : 'Kept ✓';
+        if(kept===totalKeep){
+          document.getElementById('sql2').classList.add('show');
+          document.getElementById('b2').disabled=false;
+        }
+      } else {
+        el.classList.add('tossed');
+        document.getElementById('f2').textContent='Not the top one — out it goes.';
+      }
+    };
+    keepArea.appendChild(el);
+  });
+}
+
+function buildStage4(s){
+  const quizArea = document.getElementById('quizArea');
+  const quiz = buildQuiz(s);
+  let qi = 0;
+  function render(){
+    if(qi>=quiz.length){
+      quizArea.style.display='none';
+      document.getElementById('finalArea').style.display='block';
+      return;
+    }
+    const item = quiz[qi];
+    quizArea.innerHTML = `<div class="panel qcard"><div class="q">${item.q}</div><div class="opts"></div><div class="feedback"></div></div>`;
+    const opts = quizArea.querySelector('.opts');
+    const fb = quizArea.querySelector('.feedback');
+    item.opts.forEach((o,i)=>{
+      const b = document.createElement('button');
+      b.className='opt'; b.textContent=o;
+      b.onclick = ()=>{
+        if(i===item.a){
+          b.classList.add('right'); fb.textContent='✓';
+          setTimeout(()=>{ qi++; render(); }, 600);
+        } else {
+          b.classList.add('wrong');
+          fb.textContent='Say it: pile → newest → top.';
+        }
+      };
+      opts.appendChild(b);
+    });
+  }
+  render();
+}
+
+// scenario tabs
+const tabs = document.getElementById('scnTabs');
+Object.entries(SCENARIOS).forEach(([id, s])=>{
+  const b = document.createElement('button');
+  b.className='scn'; b.dataset.id=id; b.textContent=s.tab;
+  b.onclick = ()=>resetGame(id);
+  tabs.appendChild(b);
+});
+
+resetGame('cards');
+</script>
+</body>
+</html>
