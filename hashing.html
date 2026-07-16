@@ -293,5 +293,190 @@ function setPair(a,b){
   renderCompare();
 }
 </script>
+<!-- ═══════════ INSIDE THE HASH ═══════════ -->
+<div class="wrap" id="insideHash" style="margin-top:34px;">
+  <div class="eyebrow">Deep dive — inside the blender</div>
+  <h1 style="font-size:22px;">Inside SHA-256 <span style="color:var(--dim); font-weight:500;">/ what the function actually does</span></h1>
+  <p class="sub">This is the <b style="color:var(--hub);">real algorithm</b> running in your browser — not a metaphor. Type something, then scrub through the 64 mixing rounds and watch eight registers churn your input into a fingerprint.</p>
+
+  <div class="panel">
+    <div class="panel-title">1 · Input becomes blocks</div>
+    <input type="text" id="ihInput" value="claim_id=482|status=DENIED" maxlength="40"
+      style="width:100%; background:var(--panel2); border:1px solid var(--edge); border-radius:10px; color:var(--text); font-family:'JetBrains Mono',monospace; font-size:13px; padding:11px 13px; outline:none;">
+    <div style="font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--dim); margin-top:8px; line-height:1.8;" id="ihBytes"></div>
+    <div class="note" style="margin-top:6px;">Your text → bytes → padded to a 512-bit block. Padding includes the message length, so <span style="color:var(--hub);">"abc" and "abc&nbsp;" are already different before mixing even starts.</span></div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">2 · The message schedule feeds the rounds</div>
+    <div style="font-size:13px; color:var(--dim); margin-bottom:10px;">The block is expanded into 64 words — the first 16 are your input, the next 48 are made by rotating and XORing earlier words. Every input bit gets fed into the machine again and again.</div>
+    <div id="ihSchedule" style="display:grid; grid-template-columns:repeat(8,1fr); gap:4px; font-family:'JetBrains Mono',monospace; font-size:9.5px;"></div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">3 · 64 rounds of stirring — scrub through them</div>
+    <div style="font-size:13px; color:var(--dim); margin-bottom:10px;">Eight registers (a–h). Each round: rotate, XOR, add — then every register shifts one seat down and the new mix lands in <b style="color:var(--hub);">a</b>. Drag the slider and watch bits smear.</div>
+    <input type="range" id="ihRound" min="0" max="64" value="0" style="width:100%; accent-color:var(--hash);">
+    <div style="display:flex; justify-content:space-between; font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--dim); margin-bottom:10px;">
+      <span>initial state</span><span id="ihRoundLabel">round 0 / 64</span><span>digest-ready</span>
+    </div>
+    <div id="ihRegs" style="display:grid; grid-template-columns:repeat(4,1fr); gap:6px;"></div>
+    <div class="note" style="margin-top:8px;" id="ihRegNote">Registers start from fixed constants (fractional parts of √2, √3, √5… — "nothing up my sleeve" numbers).</div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">4 · The avalanche, bit by bit</div>
+    <div style="font-size:13px; color:var(--dim); margin-bottom:10px;">Flip <b style="color:var(--hub);">one character</b> of the input and compare digests. Lit cells are bits that flipped. A good hash flips ~50% — watch it happen at every round, not just the end.</div>
+    <div style="display:flex; gap:8px; align-items:center; margin-bottom:10px; flex-wrap:wrap;">
+      <span style="font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--dim);">variant:</span>
+      <span style="font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--sat);" id="ihVariantLabel"></span>
+    </div>
+    <div id="ihAva" style="display:grid; grid-template-columns:repeat(32,1fr); gap:2px;"></div>
+    <div style="font-family:'JetBrains Mono',monospace; font-size:12px; margin-top:10px;">
+      <span style="color:var(--hub);" id="ihAvaCount"></span>
+      <span style="color:var(--dim);"> of 256 bits flipped at </span>
+      <span style="color:var(--hash);" id="ihAvaRound"></span>
+    </div>
+    <div class="note" style="margin-top:8px;">This is why your hashdiff catches a trailing space, a case change, a reordered column — <b style="color:var(--hub);">any</b> change avalanches. One equality check replaces twenty column comparisons.</div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">The four properties, now visible</div>
+    <div style="font-size:13px; line-height:1.8; color:var(--dim);">
+      <b style="color:var(--text);">Deterministic</b> — same input, same churn, same digest, every time.<br>
+      <b style="color:var(--text);">Fixed length</b> — 8 registers × 32 bits = 256 bits out, whether you hash "a" or a whole satellite row.<br>
+      <b style="color:var(--text);">One-way</b> — after 64 rounds of rotate/XOR/add, un-stirring is computationally hopeless.<br>
+      <b style="color:var(--text);">Avalanche</b> — one bit in, half the bits out. The property your entire vault leans on.
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+// ── minimal SHA-256 with state capture (single block, inputs ≤ 55 bytes) ──
+const K = [0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
+0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
+0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
+0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
+0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
+0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
+0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
+0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];
+const H0 = [0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];
+const rr = (x,n)=>((x>>>n)|(x<<(32-n)))>>>0;
+
+function sha256Trace(str){
+  const bytes = new TextEncoder().encode(str).slice(0,55);
+  const block = new Uint8Array(64);
+  block.set(bytes);
+  block[bytes.length] = 0x80;
+  const bitLen = bytes.length*8;
+  block[62] = (bitLen>>>8)&0xff; block[63] = bitLen&0xff;
+
+  const w = new Array(64);
+  for(let i=0;i<16;i++) w[i] = ((block[i*4]<<24)|(block[i*4+1]<<16)|(block[i*4+2]<<8)|block[i*4+3])>>>0;
+  for(let i=16;i<64;i++){
+    const s0 = (rr(w[i-15],7)^rr(w[i-15],18)^(w[i-15]>>>3))>>>0;
+    const s1 = (rr(w[i-2],17)^rr(w[i-2],19)^(w[i-2]>>>10))>>>0;
+    w[i] = (w[i-16]+s0+w[i-7]+s1)>>>0;
+  }
+  let [a,b,c,d,e,f,g,h] = H0;
+  const states = [[a,b,c,d,e,f,g,h]];
+  for(let i=0;i<64;i++){
+    const S1 = (rr(e,6)^rr(e,11)^rr(e,25))>>>0;
+    const ch = ((e&f)^((~e>>>0)&g))>>>0;
+    const t1 = (h+S1+ch+K[i]+w[i])>>>0;
+    const S0 = (rr(a,2)^rr(a,13)^rr(a,22))>>>0;
+    const mj = ((a&b)^(a&c)^(b&c))>>>0;
+    const t2 = (S0+mj)>>>0;
+    h=g; g=f; f=e; e=(d+t1)>>>0; d=c; c=b; b=a; a=(t1+t2)>>>0;
+    states.push([a,b,c,d,e,f,g,h]);
+  }
+  const digest = states[64].map((v,i)=>(v+H0[i])>>>0);
+  return {w, states, digest, bytes};
+}
+
+const hex = v => v.toString(16).padStart(8,'0');
+const REGNAMES = ['a','b','c','d','e','f','g','h'];
+const input = document.getElementById('ihInput');
+let trace, traceB, variantStr;
+
+function variantOf(s){
+  if(!s.length) return ' ';
+  // flip the case of the last letter, or append a space if none
+  for(let i=s.length-1;i>=0;i--){
+    const ch=s[i];
+    if(/[a-zA-Z]/.test(ch)){
+      const fl = ch===ch.toLowerCase()?ch.toUpperCase():ch.toLowerCase();
+      return s.slice(0,i)+fl+s.slice(i+1);
+    }
+  }
+  return s+' ';
+}
+
+function renderBytes(){
+  const bs = Array.from(trace.bytes).map(b=>b.toString(16).padStart(2,'0'));
+  document.getElementById('ihBytes').innerHTML =
+    bs.map(b=>'<span style="border:1px solid var(--edge); border-radius:4px; padding:1px 4px; margin:1px; display:inline-block;">'+b+'</span>').join('') +
+    ' <span style="color:var(--hub);">+ padding + length → one 512-bit block</span>';
+}
+
+function renderSchedule(){
+  const el = document.getElementById('ihSchedule');
+  el.innerHTML = trace.w.map((v,i)=>{
+    const fromInput = i<16;
+    return '<div style="padding:4px 2px; text-align:center; border-radius:5px; border:1px solid '+(fromInput?'rgba(255,180,84,0.45)':'var(--edge)')+'; color:'+(fromInput?'var(--hub)':'var(--dim)')+';" title="w['+i+']">'+hex(v).slice(0,6)+'</div>';
+  }).join('');
+}
+
+function renderRegs(){
+  const r = +document.getElementById('ihRound').value;
+  document.getElementById('ihRoundLabel').textContent = 'round '+r+' / 64';
+  const st = trace.states[r];
+  const prev = trace.states[Math.max(0,r-1)];
+  document.getElementById('ihRegs').innerHTML = st.map((v,i)=>{
+    const changed = r>0 && v!==prev[i];
+    return '<div style="background:var(--panel2); border:1px solid '+(changed?'rgba(111,168,255,0.5)':'var(--edge)')+'; border-radius:8px; padding:8px 6px; text-align:center;">' +
+      '<div style="font-family:\'JetBrains Mono\',monospace; font-size:10px; color:var(--dim);">'+REGNAMES[i]+'</div>' +
+      '<div style="font-family:\'JetBrains Mono\',monospace; font-size:12px; color:'+(changed?'var(--hash)':'var(--text)')+';">'+hex(v)+'</div></div>';
+  }).join('');
+  document.getElementById('ihRegNote').innerHTML = r===0
+    ? 'Registers start from fixed constants — fractional parts of square roots. "Nothing up my sleeve" numbers.'
+    : r<64 ? 'Round '+r+': word w['+(r-1)+'] folded in. Registers shift one seat; the fresh mix lands in <b style="color:var(--hub);">a</b> and <b style="color:var(--hub);">e</b>.'
+    : 'All 64 words folded in. Add to the initial constants → this is your digest.';
+  renderAvalanche(r);
+}
+
+function renderAvalanche(r){
+  const A = trace.states[r], B = traceB.states[r];
+  let flips = 0, cells = '';
+  for(let i=0;i<8;i++){
+    const x = (A[i]^B[i])>>>0;
+    for(let bit=31; bit>=0; bit--){
+      const on = (x>>>bit)&1;
+      flips += on;
+      cells += '<div style="aspect-ratio:1; border-radius:2px; background:'+(on?'var(--sat)':'var(--panel2)')+'; border:1px solid var(--edge);"></div>';
+    }
+  }
+  document.getElementById('ihAva').innerHTML = cells;
+  document.getElementById('ihAvaCount').textContent = flips;
+  document.getElementById('ihAvaRound').textContent = r===0 ? 'round 0 (identical start!)' : 'round '+r;
+}
+
+function recompute(){
+  const v = input.value || ' ';
+  variantStr = variantOf(v);
+  document.getElementById('ihVariantLabel').textContent = JSON.stringify(variantStr) + ' (one character different)';
+  trace = sha256Trace(v);
+  traceB = sha256Trace(variantStr);
+  renderBytes(); renderSchedule(); renderRegs();
+}
+
+input.addEventListener('input', recompute);
+document.getElementById('ihRound').addEventListener('input', renderRegs);
+recompute();
+})();
+</script>
+
 </body>
 </html>
