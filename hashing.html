@@ -142,6 +142,9 @@
       linear-gradient(90deg, var(--grid) 1px, transparent 1px) 0 0/44px 100%,
       var(--bg);
   }
+  .dl-btn{ color:#0b0e14 !important; transition:opacity .15s; }
+  .dl-btn:hover{ opacity:0.85; }
+  [data-theme="light"] .dl-btn{ color:#ffffff !important; }
 </style>
 </head>
 <body>
@@ -347,6 +350,23 @@ function setPair(a,b){
       <b style="color:var(--text);">Fixed length</b> — 8 registers × 32 bits = 256 bits out, whether you hash "a" or a whole satellite row.<br>
       <b style="color:var(--text);">One-way</b> — after 64 rounds of rotate/XOR/add, un-stirring is computationally hopeless.<br>
       <b style="color:var(--text);">Avalanche</b> — one bit in, half the bits out. The property your entire vault leans on.
+    </div>
+  </div>
+
+  <div class="panel" style="border-color:rgba(255,180,84,0.35); background:linear-gradient(135deg, var(--panel) 0%, var(--panel2) 100%);">
+    <div class="panel-title">Take it offline — the field sheets</div>
+    <div style="display:flex; gap:16px; align-items:center; flex-wrap:wrap;">
+      <div style="flex:1; min-width:220px; font-size:13px; color:var(--dim); line-height:1.7;">
+        Six printable worksheets, pencil required: the toy hash, the real avalanche,
+        and the Hub / Link / Satellite / Hashdiff — same "Laboratory of Small Differences"
+        instruments as this page, worked by hand. <span style="color:var(--hub);">Letter size, print at 100% scale.</span>
+      </div>
+      <a href="worksheets/laboratory-of-small-differences.pdf" target="_blank" rel="noopener" class="dl-btn"
+         style="font-family:'JetBrains Mono',monospace; font-weight:700; font-size:12.5px; letter-spacing:0.5px;
+                background:var(--hash); text-decoration:none; padding:12px 20px;
+                border-radius:10px; white-space:nowrap; display:inline-block;">
+        ↓ Print the field sheets (PDF)
+      </a>
     </div>
   </div>
 </div>
