@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+(function(){
+  const saved = localStorage.getItem('dv-theme');
+  if(saved === 'light') document.documentElement.setAttribute('data-theme','light');
+  window.toggleTheme = function(){
+    const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+    if(isLight){ document.documentElement.removeAttribute('data-theme'); localStorage.setItem('dv-theme','dark'); }
+    else { document.documentElement.setAttribute('data-theme','light'); localStorage.setItem('dv-theme','light'); }
+    const btn = document.querySelector('.theme-toggle');
+    if(btn) btn.textContent = document.documentElement.getAttribute('data-theme')==='light' ? '\u263e dark' : '\u2600 light';
+  };
+  document.addEventListener('DOMContentLoaded', function(){
+    const nav = document.querySelector('.nav');
+    if(nav){
+      const btn = document.createElement('button');
+      btn.className = 'theme-toggle';
+      btn.textContent = document.documentElement.getAttribute('data-theme')==='light' ? '\u263e dark' : '\u2600 light';
+      btn.onclick = window.toggleTheme;
+      nav.appendChild(btn);
+    }
+  });
+})();
+</script>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Governance — Two Hierarchies, Two Directions</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Inter:wght@400;500;600;700;800&display=swap');
+
+  :root{
+    --bg:#0b0e14; --panel:#12161f; --panel2:#161c28; --edge:#1e2430;
+    --hub:#ffb454; --link:#7ee3c9; --sat:#ff6b7a; --hash:#6fa8ff;
+    --text:#e8ecf4; --dim:#7c8598; --grid:#1a2030; --good:#7ee3c9; --bad:#ff6b7a;
+  }
+  [data-theme="light"]{
+    --bg: #efe7de; --panel: #f7f2ec; --panel2: #e7dccf; --edge: #d7c7b8;
+    --hub: #7d6a5c; --link: #5f7259; --sat: #a05c4e; --hash: #52708c;
+    --text: #3e434a; --dim: #8e7e73; --grid: #e6dcd1; --good: #5f7259; --bad: #a05c4e;
+  }
+  [data-theme="light"] body, [data-theme="light"] button{ color: var(--text); }
+
+  *{box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent;}
+  body{
+    background:
+      linear-gradient(var(--grid) 1px, transparent 1px) 0 0/100% 44px,
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px) 0 0/44px 100%,
+      var(--bg);
+    color:var(--text); font-family:'Inter',sans-serif; padding:24px 14px 70px; line-height:1.5;
+  }
+  .wrap{ max-width:760px; margin:0 auto; }
+
+  .nav{ display:flex; gap:8px; margin-bottom:20px; flex-wrap:wrap; }
+  .nav a{
+    font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:0.5px;
+    color:var(--dim); text-decoration:none; padding:6px 10px; border:1px solid var(--edge); border-radius:7px;
+  }
+  .nav a.active{ color:var(--hash); border-color:rgba(111,168,255,0.4); background:rgba(111,168,255,0.08); }
+  .theme-toggle{
+    font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:0.5px;
+    color:var(--dim); background:transparent; padding:6px 10px; border:1px solid var(--edge);
+    border-radius:7px; cursor:pointer; margin-left:auto;
+  }
+
+  .eyebrow{ font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:2px; color:var(--dim); text-transform:uppercase; margin-bottom:8px;}
+  h1{ font-size:26px; font-weight:800; letter-spacing:-0.02em; margin-bottom:6px;}
+  h1 span{ color:var(--dim); font-weight:500;}
+  .sub{ color:var(--dim); font-size:13.5px; margin-bottom:16px; max-width:60ch;}
+  .mantra-line{ font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--hash); margin-bottom:22px; }
+
+  h2.section{ font-size:15px; font-weight:800; margin:34px 0 4px; display:flex; align-items:center; gap:8px; }
+  h2.section .n{ font-family:'JetBrains Mono',monospace; font-size:11px; color:#0b0e14; background:var(--hub); border-radius:6px; padding:2px 7px; }
+  [data-theme="light"] h2.section .n{ color:#fff; }
+  p.lead{ color:var(--dim); font-size:13px; margin-bottom:16px; max-width:62ch; }
+
+  .panel{ background:var(--panel); border:1px solid var(--edge); border-radius:14px; padding:18px; margin-bottom:16px;}
+  .panel b{ color:var(--hub); }
+  .panel-title{ font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:1.2px; text-transform:uppercase; color:var(--dim); margin-bottom:12px; }
+
+  /* ── object hierarchy: nested boxes ── */
+  .nest{ border:1.5px solid var(--edge); border-radius:12px; padding:12px; background:var(--panel2); }
+  .lvl{ border:1.5px dashed var(--edge); border-radius:10px; overflow:hidden; }
+  .lvlhead{ padding:10px 14px; cursor:pointer; transition:background .15s; position:relative; }
+  .lvlhead:hover{ background:rgba(111,168,255,0.06); }
+  .lvlhead.sel{ background:rgba(255,180,84,0.1); }
+  .lvl.sel-parent{ border-color:var(--hub); }
+  .lvltag{ font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:1.2px; color:var(--dim); text-transform:uppercase; display:block; }
+  .lvlhead.sel .lvltag{ color:var(--hub); }
+  .lvlabel{ font-weight:800; font-size:13px; margin-top:2px; }
+  .lvlbody{ padding:0 12px 12px; }
+
+  .objdetail{ display:none; margin-top:12px; }
+  .objdetail.show{ display:block; animation:fadeUp .3s ease; }
+  @keyframes fadeUp{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:none;}}
+  .objdetail .fqname{ font-family:'JetBrains Mono',monospace; font-size:12.5px; background:var(--panel2); border:1px solid var(--edge); border-radius:8px; padding:8px 12px; margin-top:8px; color:var(--hash); }
+  .objdetail p{ font-size:12.5px; color:var(--dim); margin-top:8px; }
+
+  /* ── role hierarchy: tiered tree ── */
+  .roletree{ display:flex; flex-direction:column; gap:4px; align-items:stretch; }
+  .rtier{ display:grid; gap:8px; }
+  .rtier.c1{ grid-template-columns:1fr; }
+  .rtier.c2{ grid-template-columns:1fr 1fr; }
+  .rbox{
+    background:var(--panel2); border:1.5px solid var(--edge); border-radius:10px;
+    padding:10px 12px; text-align:center; cursor:pointer; transition:all .15s;
+  }
+  .rbox:hover{ border-color:var(--hash); }
+  .rbox.sel{ border-color:var(--hub); background:rgba(255,180,84,0.08); }
+  .rbox .rname{ font-family:'JetBrains Mono',monospace; font-weight:800; font-size:12px; }
+  .rbox .rsub{ font-size:9.5px; color:var(--dim); margin-top:2px; }
+  .rbox.floor{ border-style:dashed; }
+  .connector{ text-align:center; font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--link); padding:2px 0; }
+  .custom-chips{ display:flex; gap:6px; flex-wrap:wrap; justify-content:center; }
+  .custom-chips .rbox{ flex:1; min-width:90px; }
+
+  .roledetail{ margin-top:14px; padding:12px 14px; background:var(--panel2); border:1px solid var(--edge); border-radius:10px; font-size:12.5px; color:var(--dim); min-height:20px; }
+  .roledetail b{ color:var(--hub); }
+
+  /* ── orphan drill ── */
+  .orphan-scene{ display:flex; gap:14px; align-items:flex-start; flex-wrap:wrap; margin-bottom:8px; }
+  .orphan-node{
+    background:var(--panel2); border:1.5px dashed var(--bad); border-radius:10px;
+    padding:10px 14px; font-family:'JetBrains Mono',monospace; font-weight:700; font-size:12px;
+    text-align:center; animation:pulse 1.8s ease-in-out infinite;
+  }
+  @keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:.55;} }
+  .drop-zones{ display:flex; flex-direction:column; gap:8px; flex:1; min-width:200px; }
+  .zone{
+    border:1.5px dashed var(--edge); border-radius:10px; padding:10px 12px; cursor:pointer;
+    font-family:'JetBrains Mono',monospace; font-size:11.5px; transition:all .15s;
+  }
+  .zone:hover{ border-color:var(--hash); }
+  .zone.right{ border-color:var(--good); border-style:solid; background:rgba(126,227,201,0.08); }
+  .zone.wrong{ border-color:var(--bad); border-style:solid; animation:shake .3s; }
+  @keyframes shake{25%{transform:translateX(-4px);}75%{transform:translateX(4px);}}
+
+  /* ── grant cheat sheet ── */
+  .cheat-row{ border-bottom:1px solid var(--edge); padding:12px 0; }
+  .cheat-row:last-child{ border-bottom:none; }
+  .cheat-row code{ font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--hash); display:block; margin-bottom:6px; }
+  .cheat-row .desc{ font-size:12px; color:var(--dim); }
+  .cheat-row .k{ color:var(--hub); }
+
+  .feedback{min-height:20px; font-weight:600; font-size:13px; margin-top:8px; color:var(--link);}
+
+  .qcard .q{ font-size:15.5px; font-weight:700; margin-bottom:12px;}
+  .opts{display:flex; flex-direction:column; gap:8px;}
+  .opt{
+    text-align:left; background:var(--panel2); border:1px solid var(--edge);
+    border-radius:10px; padding:11px 13px; cursor:pointer;
+    font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--text);
+  }
+  .opt.right{border-color:var(--good); background:rgba(126,227,201,0.1);}
+  .opt.wrong{border-color:var(--bad); opacity:.5;}
+
+  .final{text-align:center; padding:10px;}
+  .final h2{font-size:22px; font-weight:800; margin-bottom:10px;}
+  .mantra{
+    font-family:'JetBrains Mono',monospace; font-size:15px; color:var(--link);
+    background:var(--panel); border:1px dashed var(--hub); border-radius:14px;
+    padding:18px 14px; margin:16px 0; line-height:1.7;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="nav">
+    <a href="index.html">Reference card</a>
+    <a href="simulator.html">Data Vault simulator</a>
+    <a href="hashing.html">Hashing lab</a>
+    <a href="retail-lab.html">Modeling lab</a>
+    <a href="dedupe.html">Dedupe game</a>
+    <a href="governance.html" class="active">Roles &amp; hierarchy</a>
+    <a href="worksheets/laboratory-of-small-differences.pdf" target="_blank" rel="noopener" style="font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:0.5px; color:var(--dim); text-decoration:none; padding:6px 10px; border:1px solid var(--edge); border-radius:7px;">↓ Field sheets (PDF)</a>
+  </div>
+
+  <div class="eyebrow">Governance &amp; access control</div>
+  <h1>Two Hierarchies <span>/ and they point opposite ways</span></h1>
+  <p class="sub">Snowflake has two family trees, and interviewers love conflating them. One is about <b style="color:var(--hub)">where things live</b>. The other is about <b style="color:var(--hub)">who can touch them</b>. Confuse the direction and the whole model breaks.</p>
+  <p class="mantra-line">"Objects nest downward. Roles inherit upward."</p>
+
+  <!-- ═══════════ SECTION 1 — OBJECT HIERARCHY ═══════════ -->
+  <h2 class="section"><span class="n">01</span> The Object Hierarchy</h2>
+  <p class="lead">Strict containment, always the same order. Tap each level.</p>
+
+  <div class="panel">
+    <div class="nest">
+      <div class="lvl" id="lvl-org">
+        <div class="lvlhead" data-lvl="org">
+          <span class="lvltag">Organization</span>
+          <div class="lvlabel">ORG_HELANAN</div>
+        </div>
+        <div class="lvlbody">
+          <div class="nest">
+            <div class="lvl" id="lvl-account">
+              <div class="lvlhead" data-lvl="account">
+                <span class="lvltag">Account</span>
+                <div class="lvlabel">RCM_PROD</div>
+              </div>
+              <div class="lvlbody">
+                <div class="nest">
+                  <div class="lvl" id="lvl-database">
+                    <div class="lvlhead" data-lvl="database">
+                      <span class="lvltag">Database</span>
+                      <div class="lvlabel">CLAIMS_DB</div>
+                    </div>
+                    <div class="lvlbody">
+                      <div class="nest">
+                        <div class="lvl" id="lvl-schema">
+                          <div class="lvlhead" data-lvl="schema">
+                            <span class="lvltag">Schema</span>
+                            <div class="lvlabel">BUSINESS_VAULT</div>
+                          </div>
+                          <div class="lvlbody">
+                            <div class="nest">
+                              <div class="lvl" id="lvl-object">
+                                <div class="lvlhead" data-lvl="object">
+                                  <span class="lvltag">Object</span>
+                                  <div class="lvlabel">SAT_CLAIM_STATUS</div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="objdetail" id="objDetail">
+      <div class="fqname" id="objFq"></div>
+      <p id="objDesc"></p>
+    </div>
+  </div>
+
+  <!-- ═══════════ SECTION 2 — ROLE HIERARCHY ═══════════ -->
+  <h2 class="section"><span class="n">02</span> The Role Hierarchy</h2>
+  <p class="lead">Not containment — <b style="color:var(--hub)">inheritance</b>. A role granted to a role above it hands that role everything it can do. Privileges climb; they don't trickle down. Tap a box.</p>
+
+  <div class="panel">
+    <div class="roletree">
+      <div class="rtier c1">
+        <div class="rbox" data-role="accountadmin"><div class="rname">ACCOUNTADMIN</div><div class="rsub">top of the tree</div></div>
+      </div>
+      <div class="connector">↑ inherits into ↑</div>
+      <div class="rtier c2">
+        <div class="rbox" data-role="securityadmin"><div class="rname">SECURITYADMIN</div><div class="rsub">users &amp; grants</div></div>
+        <div class="rbox" data-role="sysadmin"><div class="rname">SYSADMIN</div><div class="rsub">objects &amp; warehouses</div></div>
+      </div>
+      <div class="connector">↑ inherits into ↑</div>
+      <div class="rtier c2">
+        <div class="rbox" data-role="useradmin"><div class="rname">USERADMIN</div><div class="rsub">creates users/roles</div></div>
+        <div class="custom-chips">
+          <div class="rbox" data-role="dataeng"><div class="rname">DATA_ENGINEER</div><div class="rsub">custom</div></div>
+          <div class="rbox" data-role="analyst"><div class="rname">ANALYST</div><div class="rsub">custom</div></div>
+        </div>
+      </div>
+      <div class="connector">↑ every role includes ↑</div>
+      <div class="rtier c1">
+        <div class="rbox floor" data-role="public"><div class="rname">PUBLIC</div><div class="rsub">the floor — automatic for everyone</div></div>
+      </div>
+    </div>
+
+    <div class="roledetail" id="roleDetail">Tap any role above to see what it actually controls.</div>
+  </div>
+
+  <!-- ═══════════ SECTION 3 — THE ORPHAN ROLE DRILL ═══════════ -->
+  <h2 class="section"><span class="n">03</span> The Orphan Role</h2>
+  <p class="lead">You just ran <code style="font-family:'JetBrains Mono',monospace; color:var(--hub);">CREATE ROLE DATA_ANALYST_NEW;</code> — a real, common mistake is next. Where does it go?</p>
+
+  <div class="panel">
+    <div class="orphan-scene">
+      <div class="orphan-node">DATA_ANALYST_NEW<br><span style="font-weight:400; font-size:9.5px; color:var(--dim);">unattached</span></div>
+      <div class="drop-zones" id="orphanZones">
+        <div class="zone" data-z="sysadmin">Grant it to SYSADMIN</div>
+        <div class="zone" data-z="securityadmin">Grant it to SECURITYADMIN</div>
+        <div class="zone" data-z="leave">Leave it as-is — it works fine</div>
+      </div>
+    </div>
+    <div class="feedback" id="orphanFb"></div>
+  </div>
+
+  <!-- ═══════════ SECTION 4 — GRANT CHEAT SHEET ═══════════ -->
+  <h2 class="section"><span class="n">04</span> The Three Grants</h2>
+  <p class="lead">Every access-control question in Snowflake reduces to one of these.</p>
+
+  <div class="panel">
+    <div class="cheat-row">
+      <code>GRANT <span style="color:var(--hub);">SELECT</span> ON TABLE sat_claim_status TO ROLE analyst;</code>
+      <div class="desc"><span class="k">privilege → object → role.</span> Gives a role a specific action on a specific object.</div>
+    </div>
+    <div class="cheat-row">
+      <code>GRANT ROLE <span style="color:var(--hub);">data_engineer</span> TO ROLE sysadmin;</code>
+      <div class="desc"><span class="k">role → role.</span> The "attach" move from Fig. 03 — folds a custom role into the inheritance tree.</div>
+    </div>
+    <div class="cheat-row">
+      <code>GRANT ROLE <span style="color:var(--hub);">analyst</span> TO USER helanan;</code>
+      <div class="desc"><span class="k">role → person.</span> Hands a human being everything that role can do.</div>
+    </div>
+  </div>
+
+  <!-- ═══════════ QUIZ ═══════════ -->
+  <h2 class="section"><span class="n">05</span> Quick-fire</h2>
+  <div id="quizArea"></div>
+
+  <div class="final" id="finalArea" style="display:none;">
+    <h2>Both trees, mapped. 🗝</h2>
+    <div class="mantra">"Objects nest downward.<br>Roles inherit upward.<br>PUBLIC is the floor everyone stands on."</div>
+    <p class="lead" style="margin:0 auto;">Say it in the room: "A custom role only becomes visible to admins once it's granted up into SYSADMIN — until then, it's an orphan only its creator can see."</p>
+  </div>
+</div>
+
+<script>
+// ── object hierarchy ──
+const OBJ = {
+  org: {fq:'ORG_HELANAN', desc:'The organization sits above every account — billing and account management live here. You rarely touch this level day to day.'},
+  account: {fq:'ORG_HELANAN.RCM_PROD', desc:'One Snowflake account. Its own URL, its own set of databases, its own set of roles and users.'},
+  database: {fq:'RCM_PROD.CLAIMS_DB', desc:'CREATE DATABASE claims_db; — the top-level container you actually work in day to day.'},
+  schema: {fq:'CLAIMS_DB.BUSINESS_VAULT', desc:'CREATE SCHEMA business_vault; — table names only have to be unique WITHIN a schema, which is why raw_vault.sat_x and business_vault.sat_x can coexist peacefully.'},
+  object: {fq:'CLAIMS_DB.BUSINESS_VAULT.SAT_CLAIM_STATUS', desc:'The table, view, stage, or file format itself. Fully qualified name: database.schema.object — the address you\u2019d put in a FROM clause from anywhere else in the account.'},
+};
+document.querySelectorAll('.lvlhead').forEach(el=>{
+  el.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    document.querySelectorAll('.lvlhead').forEach(l=>l.classList.remove('sel'));
+    el.classList.add('sel');
+    const d = OBJ[el.dataset.lvl];
+    document.getElementById('objFq').textContent = d.fq;
+    document.getElementById('objDesc').textContent = d.desc;
+    document.getElementById('objDetail').classList.add('show');
+  });
+});
+
+// ── role hierarchy ──
+const ROLES = {
+  accountadmin: 'Sees and can do everything — it sits above SECURITYADMIN and SYSADMIN, so it inherits both branches. Used sparingly; day-to-day work shouldn\u2019t happen here.',
+  securityadmin: 'Manages grants, users, and roles account-wide. Can create and drop roles, and grant privileges on any object \u2014 the security branch of the tree.',
+  sysadmin: 'The recommended parent for every custom role. Creates warehouses, databases, and other objects. If your custom role never gets granted here, admins lose easy visibility into it.',
+  useradmin: 'A narrower branch under SECURITYADMIN, focused specifically on creating and managing users and roles \u2014 not objects.',
+  dataeng: 'A custom role \u2014 doesn\u2019t exist by default. This one might hold SELECT/INSERT on the vault schemas. It only shows up in the official tree once someone runs GRANT ROLE data_engineer TO ROLE sysadmin.',
+  analyst: 'Another custom role, probably read-only \u2014 SELECT on business vault views, nothing on raw vault. Same rule: it\u2019s only "in the tree" once granted up to sysadmin.',
+  public: 'Automatically included in every role and every user \u2014 you never grant PUBLIC to anyone, everyone already has it. Granting an object to PUBLIC means the entire account can see it. Treat it as a floor, not a role you configure.',
+};
+document.querySelectorAll('.rbox').forEach(el=>{
+  el.addEventListener('click', ()=>{
+    document.querySelectorAll('.rbox').forEach(r=>r.classList.remove('sel'));
+    el.classList.add('sel');
+    document.getElementById('roleDetail').innerHTML = '<b>'+el.querySelector('.rname').textContent+'</b> \u2014 '+ROLES[el.dataset.role];
+  });
+});
+
+// ── orphan drill ──
+document.querySelectorAll('#orphanZones .zone').forEach(z=>{
+  z.addEventListener('click', ()=>{
+    document.querySelectorAll('#orphanZones .zone').forEach(x=>x.classList.remove('right','wrong'));
+    const fb = document.getElementById('orphanFb');
+    if(z.dataset.z==='sysadmin'){
+      z.classList.add('right');
+      document.querySelector('.orphan-node').style.animation='none';
+      document.querySelector('.orphan-node').style.borderColor='var(--good)';
+      document.querySelector('.orphan-node').style.borderStyle='solid';
+      fb.innerHTML = '\u2713 Correct. <code style="font-family:\'JetBrains Mono\',monospace;">GRANT ROLE data_analyst_new TO ROLE sysadmin;</code> \u2014 now SYSADMIN (and ACCOUNTADMIN above it) can manage its objects. Skip this and the role is an island \u2014 only its creator can touch what it owns.';
+    } else if(z.dataset.z==='securityadmin'){
+      z.classList.add('wrong');
+      fb.innerHTML = '<span style="color:var(--bad);">Not quite \u2014 SECURITYADMIN\u2019s branch is for managing users and grants themselves, not for owning data objects. This role needs to sit in the SYSADMIN branch, where objects live.</span>';
+    } else {
+      z.classList.add('wrong');
+      fb.innerHTML = '<span style="color:var(--bad);">This is the actual real-world mistake \u2014 an ungranted role becomes invisible to SYSADMIN and ACCOUNTADMIN alike. Its creator can still use it, but no one else can find or manage what it owns.</span>';
+    }
+  });
+});
+
+// ── quiz ──
+const QUIZ = [
+  {q:'Which role sits at the very top of the tree?', opts:['SYSADMIN','ACCOUNTADMIN','SECURITYADMIN'], a:1},
+  {q:'Every single role automatically includes the privileges of\u2026', opts:['PUBLIC','SYSADMIN','whichever role created it'], a:0},
+  {q:'A brand-new custom role should typically be granted to\u2026', opts:['SECURITYADMIN','PUBLIC','SYSADMIN'], a:2},
+  {q:'In db.schema.table, table names must be unique within the\u2026', opts:['database','schema','account'], a:1},
+  {q:'Privileges in the role hierarchy flow\u2026', opts:['downward, parent to child','upward, toward ACCOUNTADMIN','sideways, between siblings'], a:1},
+];
+const quizArea = document.getElementById('quizArea');
+let qi = 0;
+function renderQuiz(){
+  if(qi>=QUIZ.length){
+    quizArea.style.display='none';
+    document.getElementById('finalArea').style.display='block';
+    document.getElementById('finalArea').scrollIntoView({behavior:'smooth', block:'center'});
+    return;
+  }
+  const item = QUIZ[qi];
+  quizArea.innerHTML = '<div class="panel qcard"><div class="q">'+item.q+'</div><div class="opts"></div><div class="feedback"></div></div>';
+  const opts = quizArea.querySelector('.opts');
+  const fb = quizArea.querySelector('.feedback');
+  item.opts.forEach((o,i)=>{
+    const b = document.createElement('button');
+    b.className='opt'; b.textContent=o;
+    b.onclick = ()=>{
+      if(i===item.a){
+        b.classList.add('right'); fb.textContent='\u2713';
+        setTimeout(()=>{ qi++; renderQuiz(); }, 600);
+      } else {
+        b.classList.add('wrong');
+        fb.textContent='Objects nest downward. Roles inherit upward.';
+      }
+    };
+    opts.appendChild(b);
+  });
+}
+renderQuiz();
+</script>
+</body>
+</html>
